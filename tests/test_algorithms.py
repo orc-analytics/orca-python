@@ -1,39 +1,85 @@
-from orca_client import algorithm, SingletonAlgorithms
+import random
+
 import pytest
 
-def test_algorithm_arg_parsing():
-    with pytest.raises(ValueError):
-        @algorithm("TestAlgorithm", "1.0.0+abcd")
+from orca_client import algorithm
+from orca_client.main import _algorithmsSingleton
+from orca_client.exceptions import InvalidDependency, InvalidAlgorithmArgument
+
+
+def test_algorithm_arg_parsing_fails():
+    """Arguments to the algorithm decorator are parsed as expected."""
+    _algorithmsSingleton._flush()
+
+    with pytest.raises(InvalidAlgorithmArgument):
+
+        @algorithm("TestAlgorithm", "1.0.0+abcd", "WindowA")
         def test_algorithm():
             return None
 
-    with pytest.raises(ValueError):
-        @algorithm("Test_Algorithm", "1.0.0")
+    with pytest.raises(InvalidAlgorithmArgument):
+
+        @algorithm("Test_Algorithm", "1.0.0", "WindowA")
         def test_algorithm():
             return None
 
-    @algorithm("TestAlgorithm", "1.0.0")
+
+def test_algo_arg_parsing_suceeds():
+    """Algorithm arg parsing succeeds."""
+    _algorithmsSingleton._flush()
+
+    @algorithm("TestAlgorithm", "1.0.0", "WindowA")
     def test_algorithm():
         return None
 
-    assert "TestAlgorithm_1.0.0" in SingletonAlgorithms
+    assert _algorithmsSingleton._has_algorithm("TestAlgorithm_1.0.0")
 
-def test_dependencies():
 
-    @algorithm("TestAlgorithm", "1.0.0")
+def test_valid_dependency():
+    """Valid dependencies are successfully managed"""
+    _algorithmsSingleton._flush()
+    algo_1_result = random.random()
+    algo_2_result = random.random()
+
+    @algorithm("TestAlgorithm", "1.0.0", "WindowA")
     def test_algorithm():
-        return None
+        return algo_1_result
 
-    assert "TestAlgorithm_1.0.0" in SingletonAlgorithms
-    assert SingletonAlgorithms["TestAlgorithm_1.0.0"] == None
-    
-    # valid dependency
-    @algorithm("TestAlgorithm2", "1.0.0")
+    assert _algorithmsSingleton._has_algorithm("TestAlgorithm_1.0.0")
+    assert _algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"]() == algo_1_result
+
+    @algorithm("TestAlgorithm", "1.2.0", "WindowB")
     def test_algorithm_2():
+        return algo_2_result
+
+    @algorithm(
+        "NewAlgorithm",
+        "1.0.0",
+        "WindowA",
+        depends_on=[test_algorithm, test_algorithm_2],
+    )
+    def test_algorithm_3():
         return None
 
-    @algorithm("TestAlgorithm", "1.0.0", depends_on=[test_algorithm_2])
-    def test_algorithm_1():
+    # confirm algorithm execution order.
+    assert (
+        _algorithmsSingleton._dependencies["NewAlgorithm_1.0.0"][0]() == algo_1_result
+    )
+    assert (
+        _algorithmsSingleton._dependencies["NewAlgorithm_1.0.0"][1]() == algo_2_result
+    )
+
+
+def test_bad_dependency():
+    """Dependencies are poorly managed"""
+    _algorithmsSingleton._flush()
+
+    # invalid dependency as not an algorithm
+    def undecorated():
         return None
 
+    with pytest.raises(InvalidDependency):
 
+        @algorithm("NewAlgorithm", "1.0.0", "WindowA", depends_on=[undecorated])
+        def new_algorithm():
+            return None
