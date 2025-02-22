@@ -2,6 +2,8 @@ import re
 from typing import Any, Dict, List, TypeVar, Callable, TypeAlias
 
 from orca_client.exceptions import InvalidDependency, InvalidAlgorithmArgument
+import service_pb2_grpc
+
 
 # Regex patterns for validation
 ALGORITHM_NAME = r"^[A-Z][a-zA-Z0-9]*$"
@@ -11,7 +13,6 @@ WINDOW_TRIGGER = r"^[A-Z][a-zA-Z0-9]*$"
 Algorithm: TypeAlias = Callable[..., Any]
 
 T = TypeVar("T", bound=Algorithm)
-
 
 class Algorithms:
     def __init__(self) -> None:
@@ -101,7 +102,7 @@ def algorithm(
             return result
 
         _algorithmsSingleton._add_algorithm(compound_algorithm_name, wrapper)
-        _algorithmsSingleton._add_trigger(window_trigger, compound_algorithm_name)
+        _algorithmsSingleton._add_trigger(window_trigger, wrapper)
 
         for dependency in depends_on:
             if dependency not in _algorithmsSingleton._algorithms.values():
@@ -119,3 +120,5 @@ def algorithm(
         return wrapper  # type: ignore
 
     return inner
+
+class TestServer(service)

@@ -6,7 +6,6 @@ from orca_client import algorithm
 from orca_client.main import _algorithmsSingleton
 from orca_client.exceptions import InvalidDependency, InvalidAlgorithmArgument
 
-
 def test_algorithm_arg_parsing_fails():
     """Arguments to the algorithm decorator are parsed as expected."""
     _algorithmsSingleton._flush()

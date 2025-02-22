@@ -6,9 +6,15 @@ authors = [
   "Frederick Mannings <contact@predixus.com>"
   ]
 readme = "README.md"
+packages = [
+    { include = "orca_client" },
+    { include = "*", from="orca/protobufs/python"} 
+]
 
 [tool.poetry.dependencies]
 python = "^3.13"
+grpcio = "^1.70.0"
+grpcio-tools = "^1.70.0"
 
 
 [tool.poetry.group.dev.dependencies]
