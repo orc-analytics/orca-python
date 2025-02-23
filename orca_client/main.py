@@ -2,6 +2,9 @@ import re
 from typing import Any, Dict, List, TypeVar, Callable, TypeAlias
 
 from orca_client.exceptions import InvalidDependency, InvalidAlgorithmArgument
+import service_pb2_grpc
+
+
 # Regex patterns for validation
 ALGORITHM_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 SEMVER_PATTERN = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
@@ -118,4 +121,4 @@ def algorithm(
 
     return inner
 
-
+class TestServer(service)
