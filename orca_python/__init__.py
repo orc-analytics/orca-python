@@ -1,3 +1,3 @@
-from orca_python.main import algorithm
+from orca_python.main import Processor
 
-__all__ = ["algorithm"]
+__all__ = ["Processor"]

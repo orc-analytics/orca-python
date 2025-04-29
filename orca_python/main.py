@@ -30,6 +30,8 @@ class Algorithm:
     window_name: str
     window_version: str
     exec_fn: AlgorithmFn
+    processor: str
+    runtime: str
 
     @property
     def full_name(self) -> str:
@@ -43,12 +45,11 @@ class Algorithm:
 class Algorithms:
     def __init__(self) -> None:
         self._flush()
-    
+
     def _flush(self) -> None:
         self._algorithms: Dict[str, Algorithm] = {}
         self._dependencyFns: Dict[str, List[AlgorithmFn]] = {}
         self._window_triggers: Dict[str, List[Algorithm]] = {}
-
 
     def _add_algorithm(self, name: str, algorithm: Algorithm) -> None:
         if name in self._algorithms:
@@ -76,93 +77,6 @@ class Algorithms:
 
 # stores all the algorithms
 _algorithmsSingleton = Algorithms()
-
-
-def algorithm(
-    name: str,
-    version: str,
-    window_name: str,
-    window_version: str,
-    depends_on: List[Callable[..., Any]] = [],
-) -> Callable[[Algorithm], Any]:
-    """
-    Register a function as an Orca Algorithm
-
-    Args:
-        name: Name of the algorithm
-        version: The algorithm version
-        window_trigger: The window that triggers the Algorithm or DAG
-        window_version: The version of the triggering window
-        depends_on: List of algorithms whose results the algorithm depends on
-
-    Returns:
-        Wrapper around the algorithm.
-
-    Raises:
-        ValueError:
-    """
-    if not re.match(ALGORITHM_NAME, name):
-        raise InvalidAlgorithmArgument(f"Algorithm name '{name}' must be in PascalCase")
-
-    if not re.match(SEMVER_PATTERN, version):
-        raise InvalidAlgorithmArgument(
-            f"Version '{version}' must follow basic semantic "
-            "versioning (e.g., '1.0.0') without release portions"
-        )
-
-    if not re.match(WINDOW_NAME, window_name):
-        raise InvalidAlgorithmArgument(
-            f"Window name '{window_name}' must be in PascalCase"
-        )
-
-    if not re.match(SEMVER_PATTERN, window_version):
-        raise InvalidAlgorithmArgument(
-            f"Window version '{window_version}' must follow basic semantic "
-            "versioning (e.g., '1.0.0') without release portions"
-        )
-
-    def inner(algo: T) -> T:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # setup ready for the algo
-            # TODO
-
-            # run the algo
-            result = algo(*args, **kwargs)
-
-            # tear down
-            # TODO
-            return result
-
-        algorithm = Algorithm(
-            name=name,
-            version=version,
-            window_name=window_name,
-            window_version=window_version,
-            exec_fn=wrapper,
-        )
-        # names need to be canonical
-        algoname = f"{algorithm.name}_{algorithm.version}"
-        winname = f"{algorithm.window_name}_{algorithm.window_version}"
-
-        _algorithmsSingleton._add_algorithm(algoname, algorithm)
-        _algorithmsSingleton._add_window_trigger(winname, algorithm)
-
-        for dependency in depends_on:
-            if not _algorithmsSingleton._has_algorithm_fn(dependency):
-                message = (
-                    f"Cannot add function `{dependency.__name__}` to dependency stack. All dependencies must "
-                    "be decorated with `@algorithm` before they can be used as dependencies."
-                )
-                raise InvalidDependency(message)
-            _algorithmsSingleton._add_dependency(algoname, dependency)
-
-        # TODO: check for circular dependencies. It's not easy to create one in python as the function
-        # needs to be defined before a dependency can be created, and you can only register depencenies
-        # once. But when dependencies are grabbed from a server, circular dependencies will be possible
-
-        return wrapper  # type: ignore
-
-    return inner
 
 
 # the orca processor
@@ -197,12 +111,14 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
     #
     #     with grpc.insecure_channel(envs.ORCASERVER) as channel:
     #         stub = service_pb2_grpc.OrcaCoreStub(channel)
-    #         response = stub.RegisterProcessor(pb.ProcessorRegistration(
-    #             name=self._name,
-    #             runtime=self._runtime,
-    #             connection_str=f"localhost:{envs.PORT}",
-    #             supported_algorithms=[]
-    #         ))
+    #         response = stub.RegisterProcessor(
+    #             pb.ProcessorRegistration(
+    #                 name=self._name,
+    #                 runtime=self._runtime,
+    #                 connection_str=f"localhost:{envs.PORT}",
+    #                 supported_algorithms=[],
+    #             )
+    #         )
     #         LOGGER.info(f"Algorithm registration response recieved: {resp}")
 
     def Start(self):
@@ -211,3 +127,94 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         server.add_insecure_port("[::]:" + envs.PORT)
         server.start()
         server.wait_for_termination()
+
+    def algorithm(
+        self,
+        name: str,
+        version: str,
+        window_name: str,
+        window_version: str,
+        depends_on: List[Callable[..., Any]] = [],
+    ) -> Callable[[Algorithm], Any]:
+        """
+        Register a function as an Orca Algorithm
+
+        Args:
+            name: Name of the algorithm
+            version: The algorithm version
+            window_trigger: The window that triggers the Algorithm or DAG
+            window_version: The version of the triggering window
+            depends_on: List of algorithms whose results the algorithm depends on
+
+        Returns:
+            Wrapper around the algorithm.
+
+        Raises:
+            ValueError:
+        """
+        if not re.match(ALGORITHM_NAME, name):
+            raise InvalidAlgorithmArgument(
+                f"Algorithm name '{name}' must be in PascalCase"
+            )
+
+        if not re.match(SEMVER_PATTERN, version):
+            raise InvalidAlgorithmArgument(
+                f"Version '{version}' must follow basic semantic "
+                "versioning (e.g., '1.0.0') without release portions"
+            )
+
+        if not re.match(WINDOW_NAME, window_name):
+            raise InvalidAlgorithmArgument(
+                f"Window name '{window_name}' must be in PascalCase"
+            )
+
+        if not re.match(SEMVER_PATTERN, window_version):
+            raise InvalidAlgorithmArgument(
+                f"Window version '{window_version}' must follow basic semantic "
+                "versioning (e.g., '1.0.0') without release portions"
+            )
+
+        def inner(algo: T) -> T:
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                # setup ready for the algo
+                # TODO
+
+                # run the algo
+                result = algo(*args, **kwargs)
+
+                # tear down
+                # TODO
+                return result
+
+            algorithm = Algorithm(
+                name=name,
+                version=version,
+                window_name=window_name,
+                window_version=window_version,
+                exec_fn=wrapper,
+                processor=self._name,
+                runtime=sys.version
+            )
+            # names need to be canonical
+            algoname = f"{algorithm.name}_{algorithm.version}"
+            winname = f"{algorithm.window_name}_{algorithm.window_version}"
+
+            _algorithmsSingleton._add_algorithm(algoname, algorithm)
+            _algorithmsSingleton._add_window_trigger(winname, algorithm)
+
+            for dependency in depends_on:
+                if not _algorithmsSingleton._has_algorithm_fn(dependency):
+                    message = (
+                        f"Cannot add function `{dependency.__name__}` to dependency stack. All dependencies must "
+                        "be decorated with `@algorithm` before they can be used as dependencies."
+                    )
+                    raise InvalidDependency(message)
+                _algorithmsSingleton._add_dependency(algoname, dependency)
+
+            # TODO: check for circular dependencies. It's not easy to create one in python as the function
+            # needs to be defined before a dependency can be created, and you can only register depencenies
+            # once. But when dependencies are grabbed from a server, circular dependencies will be possible
+
+            return wrapper  # type: ignore
+
+        return inner
