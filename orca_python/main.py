@@ -118,7 +118,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
     def ExecuteDagPart(
         self, ExecutionRequest: pb.ExecutionRequest, context
     ) -> pb.ExecutionResult:
-        LOGGER.info(f"Received DAG execution request for task: {ExecutionRequest.task_id}")
+        LOGGER.info(f"Received DAG execution request for task")
         try:
             # TODO: Implement actual execution logic
             LOGGER.warning("ExecuteDagPart implementation is a stub - not actually executing anything")
@@ -134,7 +134,14 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
     ) -> pb.HealthCheckResponse:
         LOGGER.debug("Received health check request")
         return pb.HealthCheckResponse(
-            status=pb.HealthCheckResponse(status=pb.HealthCheckResponse.STATUS_SERVING)
+            status=pb.HealthCheckResponse.STATUS_SERVING,
+            message="Processor is healthy",
+            metrics=pb.ProcessorMetrics(
+                active_tasks=0,
+                memory_bytes=0,
+                cpu_percent=0.0,
+                uptime_seconds=0
+            )
         )
     
 
@@ -144,7 +151,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         registration_request = pb.ProcessorRegistration()
         registration_request.name = self._name
         registration_request.runtime = self._runtime
-        registration_request.connection_str = f"dns://localhost:{envs.PORT}"
+        registration_request.connection_str = f"dns:///localhost:{envs.PORT}"
 
         for _, algorithm in _algorithmsSingleton._algorithms.items():
             LOGGER.debug(f"Adding algorithm to registration: {algorithm.name}_{algorithm.version}")
