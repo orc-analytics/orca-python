@@ -15,3 +15,4 @@ def getenvs() -> Tuple[str, str]:
 
 
 ORCASERVER, PORT = getenvs()
+ORCASERVER = "dns:///localhost:3335"

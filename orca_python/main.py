@@ -16,6 +16,7 @@ from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
 ALGORITHM_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 SEMVER_PATTERN = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
 WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
+
 AlgorithmFn: TypeAlias = Callable[..., Any]
 
 T = TypeVar("T", bound=AlgorithmFn)
@@ -48,6 +49,7 @@ class Algorithms:
 
     def _flush(self) -> None:
         self._algorithms: Dict[str, Algorithm] = {}
+        self._dependencies: Dict[str, List[Algorithm]] = {}
         self._dependencyFns: Dict[str, List[AlgorithmFn]] = {}
         self._window_triggers: Dict[str, List[Algorithm]] = {}
 
@@ -57,10 +59,17 @@ class Algorithms:
         self._algorithms[name] = algorithm
 
     def _add_dependency(self, algorithm: str, dependency: AlgorithmFn) -> None:
+        for algo in self._algorithms.values():
+            if algo.exec_fn == dependency:
+                dependencyAlgo = algo
+                break
+
         if algorithm not in self._dependencyFns:
             self._dependencyFns[algorithm] = [dependency]
+            self._dependencies[algorithm] = [dependencyAlgo]
         else:
             self._dependencyFns[algorithm].append(dependency)
+            self._dependencies[algorithm].append(dependencyAlgo)
 
     def _add_window_trigger(self, window: str, algorithm: Algorithm) -> None:
         if window not in self._window_triggers:
@@ -100,26 +109,36 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         return pb.HealthCheckResponse(
             status=pb.HealthCheckResponse(status=pb.HealthCheckResponse.STATUS_SERVING)
         )
+    
 
-    # def Register(self):
-    #     # build the algorithm definition struct
-    #     algorithms = []
-    #     for algorithm, _ in _algorithmsSingleton._algorithms:
-    #         algoName = algorithm.split("_")[0]
-    #         algoVersion = algorithm.split("_")[1]
-    #         # for dependency, _ in _algorithmsSingleton._dependencies
-    #
-    #     with grpc.insecure_channel(envs.ORCASERVER) as channel:
-    #         stub = service_pb2_grpc.OrcaCoreStub(channel)
-    #         response = stub.RegisterProcessor(
-    #             pb.ProcessorRegistration(
-    #                 name=self._name,
-    #                 runtime=self._runtime,
-    #                 connection_str=f"localhost:{envs.PORT}",
-    #                 supported_algorithms=[],
-    #             )
-    #         )
-    #         LOGGER.info(f"Algorithm registration response recieved: {resp}")
+    def Register(self):
+        registration_request = pb.ProcessorRegistration()
+        registration_request.name = self._name
+        registration_request.runtime = self._runtime
+        registration_request.connection_str = f"dns://localhost:{envs.PORT}"
+
+        for _, algorithm in _algorithmsSingleton._algorithms.items():
+            algo_msg = registration_request.supported_algorithms.add()
+            algo_msg.name = algorithm.name
+            algo_msg.version = algorithm.version
+            
+            # Add window type
+            algo_msg.window_type.name = algorithm.window_name
+            algo_msg.window_type.version = algorithm.window_version
+
+            # Add dependencies if they exist
+            if algorithm.full_name in _algorithmsSingleton._dependencies:
+                for dep in _algorithmsSingleton._dependencies[algorithm.full_name]:
+                    dep_msg = algo_msg.dependencies.add()
+                    dep_msg.name = dep.name
+                    dep_msg.version = dep.version
+                    dep_msg.processor_name = dep.processor
+                    dep_msg.processor_runtime = dep.runtime
+
+        with grpc.insecure_channel(envs.ORCASERVER) as channel:
+            stub = service_pb2_grpc.OrcaCoreStub(channel)
+            response = stub.RegisterProcessor(registration_request)
+            LOGGER.info(f"Algorithm registration response recieved: {response}")
 
     def Start(self):
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -195,12 +214,9 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
                 processor=self._name,
                 runtime=sys.version
             )
-            # names need to be canonical
-            algoname = f"{algorithm.name}_{algorithm.version}"
-            winname = f"{algorithm.window_name}_{algorithm.window_version}"
 
-            _algorithmsSingleton._add_algorithm(algoname, algorithm)
-            _algorithmsSingleton._add_window_trigger(winname, algorithm)
+            _algorithmsSingleton._add_algorithm(algorithm.full_name, algorithm)
+            _algorithmsSingleton._add_window_trigger(algorithm.full_window_name, algorithm)
 
             for dependency in depends_on:
                 if not _algorithmsSingleton._has_algorithm_fn(dependency):
@@ -209,7 +225,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
                         "be decorated with `@algorithm` before they can be used as dependencies."
                     )
                     raise InvalidDependency(message)
-                _algorithmsSingleton._add_dependency(algoname, dependency)
+                _algorithmsSingleton._add_dependency(algorithm.full_name, dependency)
 
             # TODO: check for circular dependencies. It's not easy to create one in python as the function
             # needs to be defined before a dependency can be created, and you can only register depencenies
