@@ -10,10 +10,11 @@ logging.basicConfig(
     ]
 )
 
-from typing import Any, Dict, List, TypeVar, Callable, TypeAlias
+from typing import Any, Dict, List, TypeVar, Callable, TypeAlias, Generator
 from concurrent import futures
 from dataclasses import dataclass
 
+import time
 import grpc
 import service_pb2 as pb
 import service_pb2_grpc
@@ -117,16 +118,53 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
 
     def ExecuteDagPart(
         self, ExecutionRequest: pb.ExecutionRequest, context
-    ) -> pb.ExecutionResult:
-        LOGGER.info(f"Received DAG execution request for task")
+    ) -> Generator[pb.ExecutionResult, None, None]:
+        """Execute part of a DAG with streaming results.
+        
+        Args:
+            ExecutionRequest: The execution request containing algorithms to run
+            context: The gRPC context
+            
+        Yields:
+            ExecutionResult: Stream of results as they become available
+        """
+        LOGGER.info(f"Received DAG execution request with {len(ExecutionRequest.algorithms)} algorithms")
+        
         try:
-            # TODO: Implement actual execution logic
-            LOGGER.warning("ExecuteDagPart implementation is a stub - not actually executing anything")
-            return pb.ExecutionResult(
-                task_id="0", status=pb.ResultStatus.RESULT_STATUS_SUCEEDED
-            )
+            for algorithm in ExecutionRequest.algorithms:
+                LOGGER.debug(f"Processing algorithm: {algorithm.name}_{algorithm.version}")
+                
+                try:
+                    LOGGER.warning(f"Algorithm {algorithm.name} execution is stubbed")
+                    
+                    result = pb.ExecutionResult(
+                        task_id=f"{algorithm.name}_{algorithm.version}",
+                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                        outputs={
+                            "status": b"completed",
+                            "timestamp": str(time.time()).encode()
+                        }
+                    )
+                    
+                    LOGGER.info(f"Streaming result for algorithm: {algorithm.name}")
+                    yield result
+                    
+                except Exception as algo_error:
+                    LOGGER.error(f"Algorithm {algorithm.name} failed: {str(algo_error)}", exc_info=True)
+                    error_result = pb.ExecutionResult(
+                        task_id=f"{algorithm.name}_{algorithm.version}",
+                        status=pb.ResultStatus.RESULT_STATUS_UNHANDLED_FAILED,
+                        outputs={
+                            "error": str(algo_error).encode(),
+                            "timestamp": str(time.time()).encode()
+                        }
+                    )
+                    yield error_result
+                    
         except Exception as e:
             LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"DAG execution failed: {str(e)}")
             raise
 
     def HealthCheck(
