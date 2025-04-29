@@ -1,6 +1,15 @@
 import re
 import sys
 import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
 from typing import Any, Dict, List, TypeVar, Callable, TypeAlias
 from concurrent import futures
 from dataclasses import dataclass
@@ -48,6 +57,7 @@ class Algorithms:
         self._flush()
 
     def _flush(self) -> None:
+        LOGGER.debug("Flushing all algorithm registrations and dependencies")
         self._algorithms: Dict[str, Algorithm] = {}
         self._dependencies: Dict[str, List[Algorithm]] = {}
         self._dependencyFns: Dict[str, List[AlgorithmFn]] = {}
@@ -55,14 +65,22 @@ class Algorithms:
 
     def _add_algorithm(self, name: str, algorithm: Algorithm) -> None:
         if name in self._algorithms:
+            LOGGER.error(f"Attempted to register duplicate algorithm: {name}")
             raise ValueError(f"Algorithm {name} already exists")
+        LOGGER.info(f"Registering algorithm: {name} (window: {algorithm.window_name}_{algorithm.window_version})")
         self._algorithms[name] = algorithm
 
     def _add_dependency(self, algorithm: str, dependency: AlgorithmFn) -> None:
+        LOGGER.debug(f"Adding dependency for algorithm: {algorithm}")
+        dependencyAlgo = None
         for algo in self._algorithms.values():
             if algo.exec_fn == dependency:
                 dependencyAlgo = algo
                 break
+        
+        if not dependencyAlgo:
+            LOGGER.error(f"Failed to find registered algorithm for dependency: {dependency.__name__}")
+            raise ValueError(f"Dependency {dependency.__name__} not found in registered algorithms")
 
         if algorithm not in self._dependencyFns:
             self._dependencyFns[algorithm] = [dependency]
@@ -95,29 +113,41 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         self._name = name
         self._connstr = f"localhost:{envs.PORT}"
         self._runtime = sys.version
+        self._max_workers = max_workers
 
     def ExecuteDagPart(
         self, ExecutionRequest: pb.ExecutionRequest, context
     ) -> pb.ExecutionResult:
-        return pb.ExecutionResult(
-            task_id="0", status=pb.ResultStatus.RESULT_STATUS_SUCEEDED
-        )
+        LOGGER.info(f"Received DAG execution request for task: {ExecutionRequest.task_id}")
+        try:
+            # TODO: Implement actual execution logic
+            LOGGER.warning("ExecuteDagPart implementation is a stub - not actually executing anything")
+            return pb.ExecutionResult(
+                task_id="0", status=pb.ResultStatus.RESULT_STATUS_SUCEEDED
+            )
+        except Exception as e:
+            LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)
+            raise
 
     def HealthCheck(
         self, HealthCheckRequest: pb.HealthCheckRequest, context
     ) -> pb.HealthCheckResponse:
+        LOGGER.debug("Received health check request")
         return pb.HealthCheckResponse(
             status=pb.HealthCheckResponse(status=pb.HealthCheckResponse.STATUS_SERVING)
         )
     
 
     def Register(self):
+        LOGGER.info(f"Preparing to register processor '{self._name}' with Orca Core")
+        LOGGER.debug(f"Building registration request with {len(_algorithmsSingleton._algorithms)} algorithms")
         registration_request = pb.ProcessorRegistration()
         registration_request.name = self._name
         registration_request.runtime = self._runtime
         registration_request.connection_str = f"dns://localhost:{envs.PORT}"
 
         for _, algorithm in _algorithmsSingleton._algorithms.items():
+            LOGGER.debug(f"Adding algorithm to registration: {algorithm.name}_{algorithm.version}")
             algo_msg = registration_request.supported_algorithms.add()
             algo_msg.name = algorithm.name
             algo_msg.version = algorithm.version
@@ -141,11 +171,51 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             LOGGER.info(f"Algorithm registration response recieved: {response}")
 
     def Start(self):
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        service_pb2_grpc.add_OrcaProcessorServicer_to_server(Processor(), server)
-        server.add_insecure_port("[::]:" + envs.PORT)
-        server.start()
-        server.wait_for_termination()
+        """Start the gRPC server and wait for termination."""
+        try:
+            LOGGER.info(f"Starting Orca Processor '{self._name}' with Python {self._runtime}")
+            LOGGER.info(f"Initializing gRPC server with {self._max_workers} workers")
+            
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=self._max_workers),
+                options=[
+                    ('grpc.max_send_message_length', 50 * 1024 * 1024),     # 50MB
+                    ('grpc.max_receive_message_length', 50 * 1024 * 1024),  # 50MB
+                ]
+            )
+            
+            # Add our servicer to the server
+            service_pb2_grpc.add_OrcaProcessorServicer_to_server(self, server)
+            
+            # Add the server port
+            port = server.add_insecure_port(f"[::]:{envs.PORT}")
+            if port == 0:
+                raise RuntimeError(f"Failed to bind to port {envs.PORT}")
+            
+            LOGGER.info(f"Server listening on port {envs.PORT}")
+            
+            # Start the server
+            server.start()
+            LOGGER.info("Server started successfully")
+            
+            # Setup graceful shutdown
+            import signal
+            def handle_shutdown(signum, frame):
+                LOGGER.info("Received shutdown signal, stopping server...")
+                server.stop(grace=5)  # 5 seconds grace period
+            
+            signal.signal(signal.SIGTERM, handle_shutdown)
+            signal.signal(signal.SIGINT, handle_shutdown)
+            
+            # Wait for termination
+            LOGGER.info("Server is ready for requests")
+            server.wait_for_termination()
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to start server: {str(e)}", exc_info=True)
+            raise
+        finally:
+            LOGGER.info("Server shutdown complete")
 
     def algorithm(
         self,
@@ -154,7 +224,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         window_name: str,
         window_version: str,
         depends_on: List[Callable[..., Any]] = [],
-    ) -> Callable[[Algorithm], Any]:
+    ) -> Callable[[T], T]:
         """
         Register a function as an Orca Algorithm
 
@@ -195,15 +265,23 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
 
         def inner(algo: T) -> T:
             def wrapper(*args: Any, **kwargs: Any) -> Any:
-                # setup ready for the algo
-                # TODO
+                LOGGER.debug(f"Executing algorithm {name}_{version}")
+                try:
+                    # setup ready for the algo
+                    # TODO
+                    LOGGER.debug(f"Algorithm {name}_{version} setup complete")
 
-                # run the algo
-                result = algo(*args, **kwargs)
+                    # run the algo
+                    LOGGER.info(f"Running algorithm {name}_{version}")
+                    result = algo(*args, **kwargs)
+                    LOGGER.debug(f"Algorithm {name}_{version} execution complete")
 
-                # tear down
-                # TODO
-                return result
+                    # tear down
+                    # TODO
+                    return result
+                except Exception as e:
+                    LOGGER.error(f"Algorithm {name}_{version} failed: {str(e)}", exc_info=True)
+                    raise
 
             algorithm = Algorithm(
                 name=name,
