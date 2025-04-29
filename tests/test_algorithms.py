@@ -32,7 +32,7 @@ def test_algo_arg_parsing_suceeds():
     def test_algorithm():
         return None
 
-    assert _algorithmsSingleton._has_algorithm("TestAlgorithm_1.0.0")
+    assert "TestAlgorithm_1.0.0" in _algorithmsSingleton._algorithms
 
 
 def test_valid_dependency():
@@ -45,8 +45,8 @@ def test_valid_dependency():
     def test_algorithm():
         return algo_1_result
 
-    assert _algorithmsSingleton._has_algorithm("TestAlgorithm_1.0.0")
-    assert _algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"]() == algo_1_result
+    assert "TestAlgorithm_1.0.0" in _algorithmsSingleton._algorithms
+    assert _algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn() == algo_1_result
 
     @algorithm("TestAlgorithm", "1.2.0", "WindowB", "1.0.0")
     def test_algorithm_2():
@@ -56,6 +56,7 @@ def test_valid_dependency():
         "NewAlgorithm",
         "1.0.0",
         "WindowA",
+        "1.0.0",
         depends_on=[test_algorithm, test_algorithm_2],
     )
     def test_algorithm_3():
@@ -63,10 +64,10 @@ def test_valid_dependency():
 
     # confirm algorithm execution order.
     assert (
-        _algorithmsSingleton._dependencies["NewAlgorithm_1.0.0"][0]() == algo_1_result
+        _algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0]() == algo_1_result
     )
     assert (
-        _algorithmsSingleton._dependencies["NewAlgorithm_1.0.0"][1]() == algo_2_result
+        _algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]() == algo_2_result
     )
 
 

@@ -42,11 +42,13 @@ class Algorithm:
 
 class Algorithms:
     def __init__(self) -> None:
+        self._flush()
+    
+    def _flush(self) -> None:
         self._algorithms: Dict[str, Algorithm] = {}
-        self._algorithmFns: Dict[str, AlgorithmFn] = {}
-        # self._dependencies: Dict[str, List[Algorithm]] = {}
         self._dependencyFns: Dict[str, List[AlgorithmFn]] = {}
         self._window_triggers: Dict[str, List[Algorithm]] = {}
+
 
     def _add_algorithm(self, name: str, algorithm: Algorithm) -> None:
         if name in self._algorithms:
@@ -59,11 +61,11 @@ class Algorithms:
         else:
             self._dependencyFns[algorithm].append(dependency)
 
-    def _add_window_trigger(self, trigger: str, algorithm: Algorithm) -> None:
-        if algorithm not in self._window_triggers:
-            self._window_triggers[trigger] = [algorithm]
+    def _add_window_trigger(self, window: str, algorithm: Algorithm) -> None:
+        if window not in self._window_triggers:
+            self._window_triggers[window] = [algorithm]
         else:
-            self._window_triggers[trigger].append(algorithm)
+            self._window_triggers[window].append(algorithm)
 
     def _has_algorithm_fn(self, algorithm_fn: AlgorithmFn) -> bool:
         for algorithm in self._algorithms.values():
@@ -136,7 +138,7 @@ def algorithm(
             version=version,
             window_name=window_name,
             window_version=window_version,
-            exec_fn=algo,
+            exec_fn=wrapper,
         )
         # names need to be canonical
         algoname = f"{algorithm.name}_{algorithm.version}"
