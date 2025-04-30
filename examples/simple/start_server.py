@@ -8,7 +8,6 @@ from orca_python import Processor
 
 proc = Processor("ml_v2")
 
-
 # base layer algorithms (no dependencies)
 @proc.algorithm("DataLoader", "1.0.0", "WindowA", "1.0.0")
 def load_data():
