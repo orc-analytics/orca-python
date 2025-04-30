@@ -21,6 +21,7 @@ poethepoet = "^0.34.0"
 mypy = "^1.15.0"
 pytest = "^8.3.5"
 ruff = "^0.11.7"
+numpy = "^2.2.5"
 
 [tool.ruff]
 exclude = ["*_pb2.py", "*.pyi"]
@@ -47,10 +48,10 @@ module = "orca.protobufs.python.*"
 ignore_errors = true
 
 [tool.poe.tasks]
-_lint_check = "ruff check orca_python tests"
-_lint_fix = "ruff check orca_python tests --fix "
-_type = "mypy orca_python --strict --warn-unused-ignores --warn-redundant-casts "
-_format = "ruff format orca_python tests"
+_lint_check = "ruff check orca_python tests examples"
+_lint_fix = "ruff check orca_python tests examples --fix "
+_type = "mypy orca_python examples --strict --warn-unused-ignores --warn-redundant-casts "
+_format = "ruff format orca_python tests examples"
 
 format = ["_format", "_lint_fix"]
 lint = ["_format", "_lint_fix", "_type"]

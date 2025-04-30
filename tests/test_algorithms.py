@@ -5,8 +5,9 @@ import pytest
 from orca_python import Processor
 from orca_python.main import _algorithmsSingleton
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
-import os 
+
 proc = Processor("ml")
+
 
 def test_algorithm_arg_parsing_fails():
     """Arguments to the algorithm decorator are parsed as expected."""
@@ -74,6 +75,7 @@ def test_valid_dependency():
         _algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]() == algo_2_result
     )
 
+
 def test_bad_dependency():
     """Dependencies are poorly managed"""
     _algorithmsSingleton._flush()
@@ -89,6 +91,7 @@ def test_bad_dependency():
         )
         def new_algorithm():
             return None
+
 
 def test_registration_works():
     """Registration of the orca processor just works"""
@@ -121,4 +124,3 @@ def test_registration_works():
         return None
 
     proc.Register()
-
