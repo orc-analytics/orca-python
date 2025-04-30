@@ -1,6 +1,7 @@
 import re
 import sys
 import logging
+import asyncio 
 
 logging.basicConfig(
     level=logging.INFO,
@@ -119,6 +120,49 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
 
+    async def execute_algorithm(self, algorithm: pb.Algorithm) -> pb.ExecutionResult:
+        """Execute a single algorithm asynchronously via asyncio."""
+        try:
+            LOGGER.debug(f"Processing algorithm: {algorithm.name}_{algorithm.version}")
+            algoName = f"{algorithm.name}_{algorithm.version}"
+            algo = self._algorithmsSingleton._algorithms[algoName]
+            
+            # execute in thread pool since algo.exec_fn is synchronous
+            loop = asyncio.get_event_loop()
+            resultValue = await loop.run_in_executor(None, algo.exec_fn)
+
+            output_dict = {
+                "status": "completed",
+                "timestamp": time.time(),
+                "value": resultValue,
+            }
+
+            output_struct = struct_pb2.Struct()
+            json_format.ParseDict(output_dict, output_struct)
+
+            result = pb.ExecutionResult(
+                task_id=f"{algorithm.name}_{algorithm.version}",
+                status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                outputs=output_struct,
+            )
+
+            LOGGER.info(f"Completed algorithm: {algorithm.name}")
+            return result
+
+        except Exception as algo_error:
+            LOGGER.error(
+                f"Algorithm {algorithm.name} failed: {str(algo_error)}",
+                exc_info=True,
+            )
+            return pb.ExecutionResult(
+                task_id=f"{algorithm.name}_{algorithm.version}",
+                status=pb.ResultStatus.RESULT_STATUS_UNHANDLED_FAILED,
+                outputs={
+                    "error": str(algo_error).encode(),
+                    "timestamp": str(time.time()).encode(),
+                },
+            )
+
     def ExecuteDagPart(
         self, ExecutionRequest: pb.ExecutionRequest, context
     ) -> Generator[pb.ExecutionResult, None, None]:
@@ -136,48 +180,41 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         )
 
         try:
-            for algorithm in ExecutionRequest.algorithms:
-                LOGGER.debug(
-                    f"Processing algorithm: {algorithm.name}_{algorithm.version}"
-                )
+            # create an event loop if it doesn't exist
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-                try:
-                    algoName = f"{algorithm.name}_{algorithm.version}"
-                    algo = self._algorithmsSingleton._algorithms[algoName]
-                    resultValue = algo.exec_fn()
+            # create tasks for all algorithms
+            tasks = [
+                # TODO: Add in dependency results
+                self.execute_algorithm(algorithm)
+                for algorithm in ExecutionRequest.algorithms
+            ]
 
-                    output_dict = {
-                        "status": "completed",
-                        "timestamp": time.time(),
-                        "value": resultValue,
-                    }
-
-                    output_struct = struct_pb2.Struct()
-                    json_format.ParseDict(output_dict, output_struct)
-
-                    result = pb.ExecutionResult(
-                        task_id=f"{algorithm.name}_{algorithm.version}",
-                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                        outputs=output_struct,
-                    )
-
-                    LOGGER.info(f"Streaming result for algorithm: {algorithm.name}")
+            # execute all tasks concurrently and yield results as they complete
+            async def process_results():
+                for completed_task in asyncio.as_completed(tasks):
+                    result = await completed_task
                     yield result
 
-                except Exception as algo_error:
-                    LOGGER.error(
-                        f"Algorithm {algorithm.name} failed: {str(algo_error)}",
-                        exc_info=True,
-                    )
-                    error_result = pb.ExecutionResult(
-                        task_id=f"{algorithm.name}_{algorithm.version}",
-                        status=pb.ResultStatus.RESULT_STATUS_UNHANDLED_FAILED,
-                        outputs={
-                            "error": str(algo_error).encode(),
-                            "timestamp": str(time.time()).encode(),
-                        },
-                    )
-                    yield error_result
+            # run async generator in the event loop
+            async_gen = process_results()
+            while True:
+                try:
+                    result = loop.run_until_complete(async_gen.__anext__())
+                    yield result
+                except StopAsyncIteration:
+                    break
+        
+        # capture exceptions
+        except Exception as e:
+            LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"DAG execution failed: {str(e)}")
+            raise
 
         except Exception as e:
             LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)

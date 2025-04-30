@@ -38,7 +38,7 @@ def load_config():
 
 # second layer algorithms (single dependencies)
 @proc.algorithm("FeatureExtractor", "1.0.0", "WindowA", "1.0.0", depends_on=[load_data])
-def extract_features(data: Any):
+def extract_features():
     """Extracts features from raw data"""
     time.sleep(0.8)  # Simulate complex computation
     return {
