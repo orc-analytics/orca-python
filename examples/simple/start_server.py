@@ -1,12 +1,12 @@
 import time
 import random
-from typing import Any
 
 import numpy as np
 
 from orca_python import Processor
 
 proc = Processor("ml_v2")
+
 
 # base layer algorithms (no dependencies)
 @proc.algorithm("DataLoader", "1.0.0", "WindowA", "1.0.0")
@@ -37,7 +37,7 @@ def load_config():
 
 # second layer algorithms (single dependencies)
 @proc.algorithm("FeatureExtractor", "1.0.0", "WindowA", "1.0.0", depends_on=[load_data])
-def extract_features():
+def extract_features(**kwargs):
     """Extracts features from raw data"""
     time.sleep(0.8)  # Simulate complex computation
     return {
@@ -49,7 +49,7 @@ def extract_features():
 @proc.algorithm(
     "MarketAnalyser", "1.0.0", "WindowA", "1.0.0", depends_on=[fetch_market_data]
 )
-def analyse_market():
+def analyse_market(**kwargs):
     """Analyses market data for patterns"""
     time.sleep(0.4)
     return {
@@ -66,7 +66,7 @@ def analyse_market():
     "1.0.0",
     depends_on=[extract_features, analyse_market, load_config],
 )
-def generate_signals():
+def generate_signals(**kwargs):
     """Generates trading signals based on features and market analysis"""
     time.sleep(1.0)  # Complex signal generation
     return {

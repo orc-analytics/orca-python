@@ -1,7 +1,7 @@
 import re
 import sys
+import asyncio
 import logging
-import asyncio 
 
 logging.basicConfig(
     level=logging.INFO,
@@ -10,7 +10,7 @@ logging.basicConfig(
 )
 
 import time
-from typing import Any, Dict, List, TypeVar, Callable, Generator, TypeAlias
+from typing import Any, Dict, List, TypeVar, Callable, Iterable, Generator, TypeAlias
 from concurrent import futures
 from dataclasses import dataclass
 
@@ -120,16 +120,26 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
 
-    async def execute_algorithm(self, algorithm: pb.Algorithm) -> pb.ExecutionResult:
+    async def execute_algorithm(
+        self, algorithm: pb.Algorithm, dependencyResults: Iterable[pb.AlgorithmResult]
+    ) -> pb.ExecutionResult:
         """Execute a single algorithm asynchronously via asyncio."""
         try:
             LOGGER.debug(f"Processing algorithm: {algorithm.name}_{algorithm.version}")
             algoName = f"{algorithm.name}_{algorithm.version}"
             algo = self._algorithmsSingleton._algorithms[algoName]
-            
+
+            # convert dependency results into a dict of name -> value
+            dependency_values = {}
+            for dep_result in dependencyResults:
+                # parse the struct value from the outputs
+                dep_value = json_format.MessageToDict(dep_result.outputs)["value"]
+                dep_name = f"{dep_result.algorithm.name}_{dep_result.algorithm.version}"
+                dependency_values[dep_name] = dep_value
+
             # execute in thread pool since algo.exec_fn is synchronous
             loop = asyncio.get_event_loop()
-            resultValue = await loop.run_in_executor(None, algo.exec_fn)
+            resultValue = await loop.run_in_executor(None, algo.exec_fn, dependency_values)
 
             output_dict = {
                 "status": "completed",
@@ -190,7 +200,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             # create tasks for all algorithms
             tasks = [
                 # TODO: Add in dependency results
-                self.execute_algorithm(algorithm)
+                self.execute_algorithm(algorithm, ExecutionRequest.algorithm_results)
                 for algorithm in ExecutionRequest.algorithms
             ]
 
@@ -208,7 +218,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
                     yield result
                 except StopAsyncIteration:
                     break
-        
+
         # capture exceptions
         except Exception as e:
             LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)
@@ -367,12 +377,15 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             )
 
         def inner(algo: T) -> T:
-            def wrapper(*args: Any, **kwargs: Any) -> Any:
+            def wrapper(dependency_values: Dict[str, Any] | None = None, *args: Any, **kwargs: Any) -> Any:
                 LOGGER.debug(f"Executing algorithm {name}_{version}")
                 try:
                     # setup ready for the algo
-                    # TODO
+                    # add dependency values to kwargs if provided
+                    if dependency_values:
+                        kwargs['dependencies'] = dependency_values
                     LOGGER.debug(f"Algorithm {name}_{version} setup complete")
+                    # TODO
 
                     # run the algo
                     LOGGER.info(f"Running algorithm {name}_{version}")
