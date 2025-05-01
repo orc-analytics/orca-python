@@ -6,26 +6,27 @@ authors = [
   "Frederick Mannings <contact@predixus.com>"
   ]
 readme = "README.md"
+packages = [
+    {include = "orca_python"},
+    {include = "*", from = "./orca/protobufs/python" },
+]
 
 [tool.poetry.dependencies]
-python = "^3.13"
-
+python = "^3.10"
+grpcio-tools = "^1.71.0"
+grpcio = "^1.71.0"
 
 [tool.poetry.group.dev.dependencies]
-poethepoet = "^0.20.0"
-mypy = "^1.3.0"
-pytest = "^7.3.1"
-ruff = "^0.1.7"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+poethepoet = "^0.34.0"
+mypy = "^1.15.0"
+pytest = "^8.3.5"
+ruff = "^0.11.7"
+numpy = "^2.2.5"
 
 [tool.ruff]
 exclude = ["*_pb2.py", "*.pyi"]
 extend-include = ["*.ipynb"]
 line-length=88
-select=["I"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["orca_client", "tests" ]
@@ -36,16 +37,21 @@ extend-select = [
         "F401", # unused imports 
         "F841"  # unused variables
     ]
+select=["I"]
 
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "orca.protobufs.python.*"
+ignore_errors = true
+
 [tool.poe.tasks]
-_lint_check = "ruff check orca_client tests"
-_lint_fix = "ruff check orca_client tests --fix "
-_type = "mypy orca_client --strict --warn-unused-ignores --warn-redundant-casts "
-_format = "ruff format orca_client tests"
+_lint_check = "ruff check orca_python tests examples"
+_lint_fix = "ruff check orca_python tests examples --fix "
+_type = "mypy orca_python examples --strict --warn-unused-ignores --warn-redundant-casts "
+_format = "ruff format orca_python tests examples"
 
 format = ["_format", "_lint_fix"]
 lint = ["_format", "_lint_fix", "_type"]
@@ -54,6 +60,3 @@ lint_ci = ["_lint_check", "_type"]
 # Testing
 test = "pytest tests -vv --disable-warnings -m 'not live'"
 test_live ="pytest tests -vv --disable-warnings -m 'live'" 
-
-
-

@@ -8,3 +8,7 @@ class InvalidAlgorithmArgument(BaseOrcaException):
 
 class InvalidDependency(BaseOrcaException):
     """Raised when a dependency is invalid"""
+
+
+class MissingDependency(BaseOrcaException):
+    """Raised when a dependency is missing"""
