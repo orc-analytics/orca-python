@@ -1,16 +1,77 @@
 import time
 import random
+from typing import Any, Dict, List, Union, Literal, TypedDict
 
 import numpy as np
 
 from orca_python import Processor
+
+# Type definitions
+Number = Union[int, float]
+MarketTrend = Literal["bullish", "bearish", "neutral"]
+TradeAction = Literal["buy", "sell", "hold"]
+
+
+class DataLoaderResult(TypedDict):
+    features: List[List[float]]
+    timestamps: List[float]
+
+
+class MarketDataResult(TypedDict):
+    prices: List[float]
+    volume: List[int]
+
+
+class ConfigResult(TypedDict):
+    threshold: float
+    window_sise: int
+    min_samples: int
+
+
+class FeatureResult(TypedDict):
+    technical_indicators: List[List[float]]
+    metadata: Dict[str, float]
+
+
+class MarketAnalysisResult(TypedDict):
+    trend: MarketTrend
+    confidence: float
+
+
+class SignalResult(TypedDict):
+    signals: List[int]
+    strength: float
+
+
+class RiskMetrics(TypedDict):
+    var: float
+    sharpe: float
+    max_drawdown: float
+
+
+class PortfolioResult(TypedDict):
+    weights: List[float]
+    expected_return: float
+    risk_adjusted_return: float
+
+
+class TradeActionCls(TypedDict):
+    asset: int
+    action: TradeAction
+
+
+class StrategyResult(TypedDict):
+    actions: List[TradeActionCls]
+    execution_time: float
+    confidence_score: float
+
 
 proc = Processor("ml_v2")
 
 
 # base layer algorithms (no dependencies)
 @proc.algorithm("DataLoader", "1.0.0", "WindowA", "1.0.0")
-def load_data():
+def load_data() -> DataLoaderResult:
     """Simulates loading and preprocessing data"""
     time.sleep(0.5)  # simulate data fetch delay
     return {
@@ -20,7 +81,7 @@ def load_data():
 
 
 @proc.algorithm("MarketData", "1.0.0", "WindowA", "1.0.0")
-def fetch_market_data():
+def fetch_market_data() -> MarketDataResult:
     """Simulates fetching market data"""
     time.sleep(0.3)  # simulate deata fetch delay
     return {
@@ -30,14 +91,14 @@ def fetch_market_data():
 
 
 @proc.algorithm("ConfigLoader", "1.0.0", "WindowA", "1.0.0")
-def load_config():
+def load_config() -> ConfigResult:
     """Loads configuration settings"""
     return {"threshold": 0.75, "window_sise": 20, "min_samples": 50}
 
 
 # second layer algorithms (single dependencies)
 @proc.algorithm("FeatureExtractor", "1.0.0", "WindowA", "1.0.0", depends_on=[load_data])
-def extract_features(**kwargs):
+def extract_features(**kwargs: Dict[str, Any]) -> FeatureResult:
     """Extracts features from raw data"""
     time.sleep(0.8)  # Simulate complex computation
     return {
@@ -49,7 +110,7 @@ def extract_features(**kwargs):
 @proc.algorithm(
     "MarketAnalyser", "1.0.0", "WindowA", "1.0.0", depends_on=[fetch_market_data]
 )
-def analyse_market(**kwargs):
+def analyse_market(**kwargs: Dict[str, Any]) -> MarketAnalysisResult:
     """Analyses market data for patterns"""
     time.sleep(0.4)
     return {
@@ -66,7 +127,7 @@ def analyse_market(**kwargs):
     "1.0.0",
     depends_on=[extract_features, analyse_market, load_config],
 )
-def generate_signals(**kwargs):
+def generate_signals(**kwargs: Dict[str, Any]) -> SignalResult:
     """Generates trading signals based on features and market analysis"""
     time.sleep(1.0)  # Complex signal generation
     return {
@@ -82,7 +143,7 @@ def generate_signals(**kwargs):
     "1.0.0",
     depends_on=[analyse_market, load_config],
 )
-def calculate_risk():
+def calculate_risk() -> RiskMetrics:
     """Calculates risk metrics"""
     time.sleep(0.6)
     return {
@@ -100,7 +161,7 @@ def calculate_risk():
     "1.0.0",
     depends_on=[generate_signals, calculate_risk],
 )
-def optimise_portfolio():
+def optimise_portfolio() -> PortfolioResult:
     """Optimises portfolio based on signals and risk"""
     time.sleep(1.5)  # Heavy optimisation computation
     return {
@@ -118,7 +179,7 @@ def optimise_portfolio():
     "1.0.0",
     depends_on=[optimise_portfolio, calculate_risk, generate_signals],
 )
-def execute_strategy():
+def execute_strategy() -> StrategyResult:
     """Executes final trading strategy"""
     time.sleep(0.7)
     return {

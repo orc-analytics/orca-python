@@ -10,7 +10,17 @@ logging.basicConfig(
 )
 
 import time
-from typing import Any, Dict, List, TypeVar, Callable, Iterable, Generator, TypeAlias
+from typing import (
+    Any,
+    Dict,
+    List,
+    TypeVar,
+    Callable,
+    Iterable,
+    Generator,
+    TypeAlias,
+    AsyncGenerator,
+)
 from concurrent import futures
 from dataclasses import dataclass
 
@@ -19,6 +29,7 @@ import service_pb2 as pb
 import service_pb2_grpc
 import google.protobuf.struct_pb2 as struct_pb2
 from google.protobuf import json_format
+from service_pb2_grpc import OrcaProcessorServicer
 
 from orca_python import envs
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
@@ -111,7 +122,7 @@ class Algorithms:
 
 
 # the orca processor
-class Processor(service_pb2_grpc.OrcaProcessorServicer):
+class Processor(OrcaProcessorServicer):  # type: ignore
     def __init__(self, name: str, max_workers: int = 10):
         super().__init__()
         self._name = name
@@ -139,7 +150,9 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
 
             # execute in thread pool since algo.exec_fn is synchronous
             loop = asyncio.get_event_loop()
-            resultValue = await loop.run_in_executor(None, algo.exec_fn, dependency_values)
+            resultValue = await loop.run_in_executor(
+                None, algo.exec_fn, dependency_values
+            )
 
             output_dict = {
                 "status": "completed",
@@ -174,7 +187,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             )
 
     def ExecuteDagPart(
-        self, ExecutionRequest: pb.ExecutionRequest, context
+        self, ExecutionRequest: pb.ExecutionRequest, context: grpc.ServicerContext
     ) -> Generator[pb.ExecutionResult, None, None]:
         """Execute part of a DAG with streaming results.
 
@@ -205,7 +218,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             ]
 
             # execute all tasks concurrently and yield results as they complete
-            async def process_results():
+            async def process_results() -> AsyncGenerator[pb.ExecutionResult, None]:
                 for completed_task in asyncio.as_completed(tasks):
                     result = await completed_task
                     yield result
@@ -233,7 +246,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             raise
 
     def HealthCheck(
-        self, HealthCheckRequest: pb.HealthCheckRequest, context
+        self, HealthCheckRequest: pb.HealthCheckRequest, context: grpc.ServicerContext
     ) -> pb.HealthCheckResponse:
         LOGGER.debug("Received health check request")
         return pb.HealthCheckResponse(
@@ -244,7 +257,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             ),
         )
 
-    def Register(self):
+    def Register(self) -> None:
         LOGGER.info(f"Preparing to register processor '{self._name}' with Orca Core")
         LOGGER.debug(
             f"Building registration request with {len(self._algorithmsSingleton._algorithms)} algorithms"
@@ -280,7 +293,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             response = stub.RegisterProcessor(registration_request)
             LOGGER.info(f"Algorithm registration response recieved: {response}")
 
-    def Start(self):
+    def Start(self) -> None:
         """Start the processor server and wait for termination."""
         try:
             LOGGER.info(
@@ -313,7 +326,7 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             # setup graceful shutdown
             import signal
 
-            def handle_shutdown(signum, frame):
+            def handle_shutdown(signum: int, frame: Any) -> None:
                 LOGGER.info("Received shutdown signal, stopping server...")
                 server.stop(grace=5)  # 5 seconds grace period
 
@@ -377,13 +390,17 @@ class Processor(service_pb2_grpc.OrcaProcessorServicer):
             )
 
         def inner(algo: T) -> T:
-            def wrapper(dependency_values: Dict[str, Any] | None = None, *args: Any, **kwargs: Any) -> Any:
+            def wrapper(
+                dependency_values: Dict[str, Any] | None = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> Any:
                 LOGGER.debug(f"Executing algorithm {name}_{version}")
                 try:
                     # setup ready for the algo
                     # add dependency values to kwargs if provided
                     if dependency_values:
-                        kwargs['dependencies'] = dependency_values
+                        kwargs["dependencies"] = dependency_values
                     LOGGER.debug(f"Algorithm {name}_{version} setup complete")
                     # TODO
 
