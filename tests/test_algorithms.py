@@ -3,7 +3,6 @@ import random
 import pytest
 
 from orca_python import Processor
-from orca_python.main import _algorithmsSingleton
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
 
 proc = Processor("ml")
@@ -11,7 +10,7 @@ proc = Processor("ml")
 
 def test_algorithm_arg_parsing_fails():
     """Arguments to the algorithm decorator are parsed as expected."""
-    _algorithmsSingleton._flush()
+    proc._algorithmsSingleton._flush()
 
     with pytest.raises(InvalidAlgorithmArgument):
 
@@ -28,18 +27,18 @@ def test_algorithm_arg_parsing_fails():
 
 def test_algo_arg_parsing_suceeds():
     """Algorithm arg parsing succeeds."""
-    _algorithmsSingleton._flush()
+    proc._algorithmsSingleton._flush()
 
     @proc.algorithm("TestAlgorithm", "1.0.0", "WindowA", "1.0.0")
     def test_algorithm():
         return None
 
-    assert "TestAlgorithm_1.0.0" in _algorithmsSingleton._algorithms
+    assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
 
 
 def test_valid_dependency():
     """Valid dependencies are successfully managed"""
-    _algorithmsSingleton._flush()
+    proc._algorithmsSingleton._flush()
     algo_1_result = random.random()
     algo_2_result = random.random()
 
@@ -47,9 +46,9 @@ def test_valid_dependency():
     def test_algorithm():
         return algo_1_result
 
-    assert "TestAlgorithm_1.0.0" in _algorithmsSingleton._algorithms
+    assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
     assert (
-        _algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
+        proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
         == algo_1_result
     )
 
@@ -69,16 +68,16 @@ def test_valid_dependency():
 
     # confirm algorithm execution order.
     assert (
-        _algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0]() == algo_1_result
+        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0]() == algo_1_result
     )
     assert (
-        _algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]() == algo_2_result
+        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]() == algo_2_result
     )
 
 
 def test_bad_dependency():
     """Dependencies are poorly managed"""
-    _algorithmsSingleton._flush()
+    proc._algorithmsSingleton._flush()
 
     # invalid dependency as not an algorithm
     def undecorated():
@@ -92,10 +91,10 @@ def test_bad_dependency():
         def new_algorithm():
             return None
 
-
+@pytest.mark.live
 def test_registration_works():
     """Registration of the orca processor just works"""
-    _algorithmsSingleton._flush()
+    proc._algorithmsSingleton._flush()
     algo_1_result = random.random()
     algo_2_result = random.random()
 
@@ -103,9 +102,9 @@ def test_registration_works():
     def test_algorithm():
         return algo_1_result
 
-    assert "TestAlgorithm_1.0.0" in _algorithmsSingleton._algorithms
+    assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
     assert (
-        _algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
+        proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
         == algo_1_result
     )
 
