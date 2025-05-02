@@ -2,7 +2,7 @@ import re
 import sys
 import asyncio
 import logging
-
+import traceback
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -132,7 +132,10 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         self._algorithmsSingleton: Algorithms = Algorithms()
 
     async def execute_algorithm(
-        self, algorithm: pb.Algorithm, dependencyResults: Iterable[pb.AlgorithmResult]
+        self,
+        exec_id: str,
+        algorithm: pb.Algorithm,
+        dependencyResults: Iterable[pb.AlgorithmResult],
     ) -> pb.ExecutionResult:
         """Execute a single algorithm asynchronously via asyncio."""
         try:
@@ -143,47 +146,125 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             # convert dependency results into a dict of name -> value
             dependency_values = {}
             for dep_result in dependencyResults:
-                # parse the struct value from the outputs
-                dep_value = json_format.MessageToDict(dep_result.outputs)["value"]
+                # extract value based on which oneof field is set
+                dep_value = None
+                if dep_result.result.HasField('single_value'):
+                    dep_value = dep_result.result.single_value
+                elif dep_result.result.HasField('float_values'):
+                    dep_value = list(dep_result.result.float_values.values)
+                elif dep_result.result.HasField('struct_value'):
+                    dep_value = json_format.MessageToDict(dep_result.result.struct_value)
+                
                 dep_name = f"{dep_result.algorithm.name}_{dep_result.algorithm.version}"
                 dependency_values[dep_name] = dep_value
 
             # execute in thread pool since algo.exec_fn is synchronous
             loop = asyncio.get_event_loop()
-            resultValue = await loop.run_in_executor(
+            
+            algoResult = await loop.run_in_executor(
                 None, algo.exec_fn, dependency_values
             )
-
-            output_dict = {
-                "status": "completed",
-                "timestamp": time.time(),
-                "value": resultValue,
-            }
-
-            output_struct = struct_pb2.Struct()
-            json_format.ParseDict(output_dict, output_struct)
-
-            result = pb.ExecutionResult(
-                task_id=f"{algorithm.name}_{algorithm.version}",
-                status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                outputs=output_struct,
+            
+            # create result based on the return type
+            current_time = int(time.time())  # Current timestamp in seconds
+            
+            if isinstance(algoResult, dict):
+                # For dictionary results, use struct_value
+                struct_value = struct_pb2.Struct()
+                json_format.ParseDict(algoResult, struct_value)
+                
+                resultPb = pb.Result(
+                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,  # Note: Using the actual enum from the proto
+                    struct_value=struct_value,
+                    timestamp=current_time
+                )
+            elif isinstance(algoResult, float) or isinstance(algoResult, int):
+                # for single numeric values
+                resultPb = pb.Result(
+                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                    single_value=float(algoResult),  # Convert to float as per proto
+                    timestamp=current_time
+                )
+            elif isinstance(algoResult, list) and all(isinstance(x, (int, float)) for x in algoResult):
+                # for lists of numeric values
+                float_array = pb.FloatArray(values=algoResult)
+                resultPb = pb.Result(
+                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                    float_values=float_array,
+                    timestamp=current_time
+                )
+            else:
+                # try to convert to struct as a fallback
+                try:
+                    struct_value = struct_pb2.Struct()
+                    # convert to dict if possible, otherwise use string representation
+                    if hasattr(algoResult, '__dict__'):
+                        result_dict = algoResult.__dict__
+                    else:
+                        result_dict = {"value": str(algoResult)}
+                        
+                    json_format.ParseDict(result_dict, struct_value)
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                        struct_value=struct_value,
+                        timestamp=current_time
+                    )
+                except Exception as conv_error:
+                    LOGGER.error(f"Failed to convert result to protobuf: {str(conv_error)}")
+                    # create a handled failure result
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_HANDLED_FAILED,
+                        timestamp=current_time
+                    )
+            
+            # create the algorithm result
+            algoResultPb = pb.AlgorithmResult(
+                algorithm=algorithm,  # Use the original algorithm object
+                result=resultPb
+            )
+            
+            # create the execution result
+            exec_result = pb.ExecutionResult(
+                exec_id=exec_id,
+                algorithm_result=algoResultPb
             )
 
             LOGGER.info(f"Completed algorithm: {algorithm.name}")
-            return result
+            return exec_result
 
         except Exception as algo_error:
             LOGGER.error(
                 f"Algorithm {algorithm.name} failed: {str(algo_error)}",
                 exc_info=True,
             )
-            return pb.ExecutionResult(
-                task_id=f"{algorithm.name}_{algorithm.version}",
+            
+            # create a failure result
+            current_time = int(time.time())
+            
+            # create an error struct value with details
+            error_struct = struct_pb2.Struct()
+            json_format.ParseDict({
+                "error": str(algo_error),
+                "stack_trace": traceback.format_exc()
+            }, error_struct)
+            
+            # create the result with unhandled failed status and error info
+            error_result = pb.Result(
                 status=pb.ResultStatus.RESULT_STATUS_UNHANDLED_FAILED,
-                outputs={
-                    "error": str(algo_error).encode(),
-                    "timestamp": str(time.time()).encode(),
-                },
+                struct_value=error_struct,
+                timestamp=current_time
+            )
+            
+            # create the algorithm result
+            algo_result = pb.AlgorithmResult(
+                algorithm=algorithm,
+                result=error_result
+            )
+            
+            # create the execution result
+            return pb.ExecutionResult(
+                exec_id=exec_id,
+                algorithm_result=algo_result
             )
 
     def ExecuteDagPart(
@@ -199,7 +280,10 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             ExecutionResult: Stream of results as they become available
         """
         LOGGER.info(
-            f"Received DAG execution request with {len(ExecutionRequest.algorithms)} algorithms"
+            (
+                f"Received DAG execution request with {len(ExecutionRequest.algorithms)} "
+                f"algorithms and ExecId: {ExecutionRequest.exec_id}"
+            )
         )
 
         try:
@@ -212,8 +296,11 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             # create tasks for all algorithms
             tasks = [
-                # TODO: Add in dependency results
-                self.execute_algorithm(algorithm, ExecutionRequest.algorithm_results)
+                self.execute_algorithm(
+                    ExecutionRequest.exec_id,
+                    algorithm,
+                    ExecutionRequest.algorithm_results,
+                )
                 for algorithm in ExecutionRequest.algorithms
             ]
 
