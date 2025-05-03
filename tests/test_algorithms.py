@@ -68,10 +68,12 @@ def test_valid_dependency():
 
     # confirm algorithm execution order.
     assert (
-        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0]() == algo_1_result
+        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0]()
+        == algo_1_result
     )
     assert (
-        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]() == algo_2_result
+        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]()
+        == algo_2_result
     )
 
 
@@ -90,6 +92,7 @@ def test_bad_dependency():
         )
         def new_algorithm():
             return None
+
 
 @pytest.mark.live
 def test_registration_works():
