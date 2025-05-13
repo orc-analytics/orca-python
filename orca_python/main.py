@@ -127,7 +127,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
     def __init__(self, name: str, max_workers: int = 10):
         super().__init__()
         self._name = name
-        self._connstr = f"localhost:{envs.PORT}"
+        self._processorConnStr = f"0.0.0.0:{envs.PORT}" # attach the processor to all network interfaces.
+        self._orcaProcessorConnStr = f"{envs.HOST}:{envs.PORT}" # tell orca-core to reference this processor by this address.
         self._runtime = sys.version
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
@@ -352,7 +353,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         registration_request = pb.ProcessorRegistration()
         registration_request.name = self._name
         registration_request.runtime = self._runtime
-        registration_request.connection_str = f"dns:///localhost:{envs.PORT}"
+        registration_request.connection_str = self._orcaProcessorConnStr
 
         for _, algorithm in self._algorithmsSingleton._algorithms.items():
             LOGGER.debug(
@@ -400,11 +401,11 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             service_pb2_grpc.add_OrcaProcessorServicer_to_server(self, server)
 
             # add the server port
-            port = server.add_insecure_port(f"[::]:{envs.PORT}")
+            port = server.add_insecure_port(self._processorConnStr)
             if port == 0:
                 raise RuntimeError(f"Failed to bind to port {envs.PORT}")
 
-            LOGGER.info(f"Server listening on port {envs.PORT}")
+            LOGGER.info(f"Server listening on address {self._processorConnStr}")
 
             # start the server
             server.start()
