@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation that accepts windows and farms the window off to the relevant processors
 - Now handling results properly.
+- Properly handled the attaching of the gRPC server.
 
 ### Changed
 
