@@ -143,7 +143,7 @@ def generate_signals(**kwargs: Dict[str, Any]) -> SignalResult:
     "1.0.0",
     depends_on=[analyse_market, load_config],
 )
-def calculate_risk() -> RiskMetrics:
+def calculate_risk(**kwargs: Dict[str, Any]) -> RiskMetrics:
     """Calculates risk metrics"""
     time.sleep(0.6)
     return {
@@ -161,7 +161,7 @@ def calculate_risk() -> RiskMetrics:
     "1.0.0",
     depends_on=[generate_signals, calculate_risk],
 )
-def optimise_portfolio() -> PortfolioResult:
+def optimise_portfolio(**kwargs: Dict[str, Any]) -> PortfolioResult:
     """Optimises portfolio based on signals and risk"""
     time.sleep(1.5)  # Heavy optimisation computation
     return {
@@ -179,7 +179,7 @@ def optimise_portfolio() -> PortfolioResult:
     "1.0.0",
     depends_on=[optimise_portfolio, calculate_risk, generate_signals],
 )
-def execute_strategy() -> StrategyResult:
+def execute_strategy(**kwargs: Dict[str, Any]) -> StrategyResult:
     """Executes final trading strategy"""
     time.sleep(0.7)
     return {
