@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.0] - 15-05-2025
+
 ### Added
 
 - Initial implementation that accepts windows and farms the window off to the relevant processors
@@ -19,4 +21,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.0.0...HEAD
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.1.0...HEAD
+[v0.1.0]: https://github.com/Predixus/Orca/compare/v0.1.0...v0.1.0
