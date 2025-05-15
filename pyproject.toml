@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "orca-client"
+name = "orca"
 version = "0.1.0"
 description = ""
 authors = [
@@ -8,7 +8,7 @@ authors = [
 readme = "README.md"
 packages = [
     {include = "orca_python"},
-    {include = "*", from = "./orca/protobufs/python" },
+    {include = "*", from = "./orca/core/protobufs/python" },
 ]
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
