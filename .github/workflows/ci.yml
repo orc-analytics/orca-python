@@ -50,3 +50,7 @@ jobs:
       - name: Run tests
         run: |
           poetry run poe test
+
+      - name: Run build
+        run: |
+          poetry build
