@@ -47,6 +47,11 @@ ignore_missing_imports = true
 module = "orca.protobufs.python.*"
 ignore_errors = true
 
+[tool.pytest.ini_options]
+markers = [
+  "live: marks tests as requireing access to live services"
+]
+
 [tool.poe.tasks]
 _lint_check = "ruff check orca_python tests examples"
 _lint_fix = "ruff check orca_python tests examples --fix "
@@ -58,5 +63,5 @@ lint = ["_format", "_lint_fix", "_type"]
 lint_ci = ["_lint_check", "_type"]
 
 # Testing
-test = "pytest tests -vv --disable-warnings -m 'not live'"
-test_live ="pytest tests -vv --disable-warnings -m 'live'" 
+test = "pytest tests -vv -m 'not live'"
+test_live ="pytest tests -vv -m 'live'" 
