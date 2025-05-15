@@ -15,7 +15,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.9"
 grpcio-tools = "^1.71.0"
 grpcio = "^1.71.0"
 
