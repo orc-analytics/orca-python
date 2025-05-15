@@ -1,24 +1,25 @@
 # 🐳 Orca Python SDK
 
 The Orca Python SDK enables developers to define and register Python-based algorithms into the
-[Orca](https://www.github.com/Predixus/orca) framework. With built-in gRPC communication, algorithm versioning, and dependency resolution,
-this SDK makes it seamless to build scalable, production-grade ML or analytics pipelines on
+[Orca](https://www.github.com/Predixus/orca) framework.
+
+Orca exists to make it seamless to build scalable, production-grade ML or analytics pipelines on
 timeseries data.
 
 ## 🚀 Getting Started
 
-Before using this SDK, you must install the Orca CLI and start Orca Core.
+Before using this SDK, you should install the Orca CLI and start Orca Core.
 
 1. Install the Orca CLI
    Ensure that Docker is installed on your system.
 
-## Linux / macOS
+**Linux / macOS**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Predixus/orca/main/install-cli.sh | bash
 ```
 
-## Windows
+**Windows**
 
 Use WSL (Windows Subsystem for Linux) and run the above command inside your WSL shell.
 
@@ -42,14 +43,15 @@ orca status
 pip install orca-time
 ```
 
-## 🧪 Example Usage
+5. Start building out your algorithms
 
-Here’s a basic example of using the SDK:
+Write a file defining your algorithms and what windows trigger them:
 
 ```python
+# main.py
 from orca_python import Processor
 
-proc = Processor("ml_v2")
+proc = Processor("ml")
 
 @proc.algorithm("MyAlgo", "1.0.0", "MyWindow", "1.0.0")
 def my_algorithm() -> dict:
@@ -60,23 +62,18 @@ proc.Register()
 proc.Start()
 ```
 
-Want to build a full dependency DAG? Check out [examples](./examples/) for a multi-layered trading strategy.
+Then run your python file to register it with orca-core:
 
-## 📚 Full Orca documentation
+```bash
+ ORCASERVER=grpc://localhost:32770 HOST=172.18.0.1 python main.py
+```
 
-## 🧠 What This SDK Does
+Replace the contents of `ORCASERVER` and `HOST` with the output of `orca status`.
 
-This SDK lets you:
+6. Emit a window to orcacore
+   TBD
 
-Define algorithms.
-
-Register them with the Orca Core service.
-
-Handle dependencies across algorithms in a DAG.
-
-Receive structured input and emit structured output.
-
-Stream execution results to orca core.
+Check out more examples [here](./examples/).
 
 ## 🧱 Key Concepts
 
