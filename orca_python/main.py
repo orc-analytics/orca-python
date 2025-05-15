@@ -336,6 +336,16 @@ class Processor(OrcaProcessorServicer):  # type: ignore
     def HealthCheck(
         self, HealthCheckRequest: pb.HealthCheckRequest, context: grpc.ServicerContext
     ) -> pb.HealthCheckResponse:
+        """
+            Registers the `HealthCheck` endpoint to the gRRPC Orca server
+
+        Args:
+            HealthCheckRequest: Health check message
+            context: A context
+
+        Returns:
+            HealthCheckResponse
+        """
         LOGGER.debug("Received health check request")
         return pb.HealthCheckResponse(
             status=pb.HealthCheckResponse.STATUS_SERVING,
