@@ -56,6 +56,35 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
+class Window:
+    time_from: int
+    time_to: int
+    name: str
+    version: str
+    origin: str
+
+def EmitWindow(window: Window) -> None:
+    """
+    Emits a window to Orca-core.
+
+    Raises:
+        grpc.RpcError: If the emit fails.
+    """
+    LOGGER.info(f"Emitting window: {window}")
+
+    window_pb = pb.Window()
+    window_pb.time_to = window.time_to
+    window_pb.time_from = window.time_from
+    window_pb.window_type_name = window.name
+    window_pb.window_type_version = window.version
+    window_pb.origin = window.origin
+
+    with grpc.insecure_channel(envs.ORCASERVER) as channel:
+        stub = service_pb2_grpc.OrcaCoreStub(channel)
+        response = stub.EmitWindow(window_pb)
+        LOGGER.info(f"Window emitted: {response}")
+
+@dataclass
 class Algorithm:
     """
     Represents a registered algorithm with metadata and execution logic.
@@ -86,6 +115,7 @@ class Algorithm:
     def full_window_name(self) -> str:
         """Returns the full window name as `window_name_window_version`."""
         return f"{self.window_name}_{self.window_version}"
+
 
 
 class Algorithms:
@@ -481,6 +511,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.RegisterProcessor(registration_request)
             LOGGER.info(f"Algorithm registration response recieved: {response}")
+
 
     def Start(self) -> None:
         """
