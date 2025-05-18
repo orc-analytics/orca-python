@@ -5,7 +5,6 @@ from orca_python.exceptions import MissingDependency
 
 
 def getenvs() -> Tuple[str, ...]:
-
     orcaserver = os.getenv("ORCASERVER", "")
     if orcaserver == "":
         MissingDependency("ORCASERVER is required")

@@ -63,6 +63,7 @@ class Window:
     version: str
     origin: str
 
+
 def EmitWindow(window: Window) -> None:
     """
     Emits a window to Orca-core.
@@ -84,6 +85,7 @@ def EmitWindow(window: Window) -> None:
         response = stub.EmitWindow(window_pb)
         LOGGER.info(f"Window emitted: {response}")
 
+
 @dataclass
 class Algorithm:
     """
@@ -98,6 +100,7 @@ class Algorithm:
         processor (str): Name of the processor where it's registered.
         runtime (str): Python runtime used for execution.
     """
+
     name: str
     version: str
     window_name: str
@@ -117,11 +120,11 @@ class Algorithm:
         return f"{self.window_name}_{self.window_version}"
 
 
-
 class Algorithms:
     """
-        Internal singleton managing all registered algorithms and their dependencies.
+    Internal singleton managing all registered algorithms and their dependencies.
     """
+
     def __init__(self) -> None:
         self._flush()
 
@@ -220,11 +223,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         name (str): Unique name of the processor.
         max_workers (int): Max worker threads for execution (default: 10).
     """
+
     def __init__(self, name: str, max_workers: int = 10):
         super().__init__()
         self._name = name
-        self._processorConnStr = f"0.0.0.0:{envs.PORT}" # attach the processor to all network interfaces.
-        self._orcaProcessorConnStr = f"{envs.HOST}:{envs.PORT}" # tell orca-core to reference this processor by this address.
+        self._processorConnStr = (
+            f"0.0.0.0:{envs.PORT}"  # attach the processor to all network interfaces.
+        )
+        self._orcaProcessorConnStr = f"{envs.HOST}:{envs.PORT}"  # tell orca-core to reference this processor by this address.
         self._runtime = sys.version
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
@@ -511,7 +517,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.RegisterProcessor(registration_request)
             LOGGER.info(f"Algorithm registration response recieved: {response}")
-
 
     def Start(self) -> None:
         """
