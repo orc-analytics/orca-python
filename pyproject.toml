@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "orca-time"
+name = "orca-python"
 version = "0.1.1"
 description = "Python SDK for the Orca timeseries analysis product"
 authors = [
