@@ -7,7 +7,7 @@ def emitWindow():
     window = Window(time_from=now - 30, time_to=now, name="Every30Second", version="1.0.0", origin="Example")
     EmitWindow(window)
 
-schedule.every(1).seconds.do(emitWindow)
+schedule.every(30).seconds.do(emitWindow)
 
 if __name__=="__main__":
     while True:

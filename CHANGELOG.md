@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The ability to trigger windows
+- A full E2E example of triggering and running algorithms
+
 ## [v0.1.0] - 15-05-2025
 
 ### Added
