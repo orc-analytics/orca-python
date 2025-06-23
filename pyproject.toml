@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "orca-python"
+name = "orca"
 version = "0.2.0"
 description = "Python SDK for the Predixus Orca product"
 authors = [
@@ -59,7 +59,7 @@ markers = [
 [tool.poe.tasks]
 _lint_check = "ruff check orca_python tests examples"
 _lint_fix = "ruff check orca_python tests examples --fix "
-_type = "mypy orca_python examples --strict --warn-unused-ignores --warn-redundant-casts "
+_type = "mypy orca_python examples tests --strict --warn-unused-ignores --warn-redundant-casts "
 _format = "ruff format orca_python tests examples"
 
 format = ["_format", "_lint_fix"]

@@ -11,6 +11,7 @@ import sys
 import asyncio
 import logging
 import traceback
+from abc import ABC, abstractmethod
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +24,7 @@ from typing import (
     Any,
     Dict,
     List,
+    Generic,
     TypeVar,
     Callable,
     Iterable,
@@ -51,6 +53,7 @@ WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 AlgorithmFn: TypeAlias = Callable[..., Any]
 
 T = TypeVar("T", bound=AlgorithmFn)
+V = TypeVar("V")
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,6 +87,18 @@ def EmitWindow(window: Window) -> None:
         stub = service_pb2_grpc.OrcaCoreStub(channel)
         response = stub.EmitWindow(window_pb)
         LOGGER.info(f"Window emitted: {response}")
+
+
+class DataGetter(ABC, Generic[V]):
+    @abstractmethod
+    def encode(self, data_struct: V) -> bytes:
+        """Encode data structure of type V to bytes."""
+        ...
+
+    @abstractmethod
+    def decode(self, data_bytes: bytes) -> V:
+        """Decode bytes back to data structure of type V."""
+        ...
 
 
 @dataclass
