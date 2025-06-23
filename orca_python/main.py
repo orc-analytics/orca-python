@@ -26,6 +26,7 @@ from typing import (
     TypeVar,
     Callable,
     Iterable,
+    Optional,
     Generator,
     TypeAlias,
     AsyncGenerator,
@@ -82,6 +83,12 @@ class Window:
     version: str
     origin: str
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ExecutionParams:
+    window: pb.Window
+    dependencies: Optional[Iterable[pb.AlgorithmResult]] = None
 
 
 def EmitWindow(window: Window) -> None:
@@ -265,7 +272,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         self,
         exec_id: str,
         algorithm: pb.Algorithm,
-        dependencyResults: Iterable[pb.AlgorithmResult],
+        params: ExecutionParams,
     ) -> pb.ExecutionResult:
         """
         Executes a single algorithm with resolved dependencies.
@@ -273,7 +280,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         Args:
             exec_id (str): Unique execution ID.
             algorithm (pb.Algorithm): The algorithm to execute.
-            dependencyResults (Iterable[pb.AlgorithmResult]): Results from dependency algorithms.
+            params (ExecutionParams): The execution params object, which contains the triggering window and dependency results.
 
         Returns:
             pb.ExecutionResult: The result of the execution.
@@ -288,27 +295,28 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             # convert dependency results into a dict of name -> value
             dependency_values = {}
-            for dep_result in dependencyResults:
-                # extract value based on which oneof field is set
-                dep_value = None
-                if dep_result.result.HasField("single_value"):
-                    dep_value = dep_result.result.single_value
-                elif dep_result.result.HasField("float_values"):
-                    dep_value = list(dep_result.result.float_values.values)
-                elif dep_result.result.HasField("struct_value"):
-                    dep_value = json_format.MessageToDict(
-                        dep_result.result.struct_value
-                    )
+            if params.dependencies:
+                for dep_result in params.dependencies:
+                    # extract value based on which oneof field is set
+                    dep_value = None
+                    if dep_result.result.HasField("single_value"):
+                        dep_value = dep_result.result.single_value
+                    elif dep_result.result.HasField("float_values"):
+                        dep_value = list(dep_result.result.float_values.values)
+                    elif dep_result.result.HasField("struct_value"):
+                        dep_value = json_format.MessageToDict(
+                            dep_result.result.struct_value
+                        )
 
-                dep_name = f"{dep_result.algorithm.name}_{dep_result.algorithm.version}"
-                dependency_values[dep_name] = dep_value
+                    dep_name = (
+                        f"{dep_result.algorithm.name}_{dep_result.algorithm.version}"
+                    )
+                    dependency_values[dep_name] = dep_value
 
             # execute in thread pool since algo.exec_fn is synchronous
             loop = asyncio.get_event_loop()
 
-            algoResult = await loop.run_in_executor(
-                None, algo.exec_fn, dependency_values
-            )
+            algoResult = await loop.run_in_executor(None, algo.exec_fn, params)
 
             # create result based on the return type
             current_time = int(time.time())  # Current timestamp in seconds
@@ -410,13 +418,13 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             return pb.ExecutionResult(exec_id=exec_id, algorithm_result=algo_result)
 
     def ExecuteDagPart(
-        self, ExecutionRequest: pb.ExecutionRequest, context: grpc.ServicerContext
+        self, executionRequest: pb.ExecutionRequest, context: grpc.ServicerContext
     ) -> Generator[pb.ExecutionResult, None, None]:
         """
         Executes part of a DAG (Directed Acyclic Graph) of algorithms.
 
         Args:
-            ExecutionRequest (pb.ExecutionRequest): The DAG execution request.
+            executionRequest (pb.ExecutionRequest): The DAG execution request.
             context (grpc.ServicerContext): gRPC context for the request.
 
         Yields:
@@ -428,8 +436,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
         LOGGER.info(
             (
-                f"Received DAG execution request with {len(ExecutionRequest.algorithms)} "
-                f"algorithms and ExecId: {ExecutionRequest.exec_id}"
+                f"Received DAG execution request with {len(executionRequest.algorithms)} "
+                f"algorithms and ExecId: {executionRequest.exec_id}"
             )
         )
 
@@ -444,11 +452,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             # create tasks for all algorithms
             tasks = [
                 self.execute_algorithm(
-                    ExecutionRequest.exec_id,
+                    executionRequest.exec_id,
                     algorithm,
-                    ExecutionRequest.algorithm_results,
+                    ExecutionParams(
+                        window=executionRequest.window,
+                        dependencies=executionRequest.algorithm_results,
+                    ),
                 )
-                for algorithm in ExecutionRequest.algorithms
+                for algorithm in executionRequest.algorithms
             ]
 
             # execute all tasks concurrently and yield results as they complete
@@ -637,18 +648,16 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
         def inner(algo: T) -> T:
             def wrapper(
-                dependency_values: Dict[str, Any] | None = None,
+                params: ExecutionParams,
                 *args: Any,
                 **kwargs: Any,
             ) -> Any:
                 LOGGER.debug(f"Executing algorithm {name}_{version}")
                 try:
                     # setup ready for the algo
-                    # add dependency values to kwargs if provided
-                    if dependency_values:
-                        kwargs["dependencies"] = dependency_values
+                    # pack the params into the kwargs - user can decide if they want it
+                    kwargs["params"] = params
                     LOGGER.debug(f"Algorithm {name}_{version} setup complete")
-                    # TODO
 
                     # run the algo
                     LOGGER.info(f"Running algorithm {name}_{version}")

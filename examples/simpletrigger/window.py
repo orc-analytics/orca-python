@@ -17,7 +17,7 @@ def emitWindow() -> None:
     EmitWindow(window)
 
 
-schedule.every(30).seconds.do(emitWindow)
+schedule.every(1).seconds.do(emitWindow)
 
 if __name__ == "__main__":
     while True:
