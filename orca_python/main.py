@@ -31,7 +31,7 @@ from typing import (
     AsyncGenerator,
 )
 from concurrent import futures
-from dataclasses import dataclass
+from dataclasses import field, dataclass
 
 import grpc
 import service_pb2 as pb
@@ -62,6 +62,7 @@ class Window:
     name: str
     version: str
     origin: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 def EmitWindow(window: Window) -> None:
@@ -79,6 +80,11 @@ def EmitWindow(window: Window) -> None:
     window_pb.window_type_name = window.name
     window_pb.window_type_version = window.version
     window_pb.origin = window.origin
+
+    # parse out the metadata
+    struct_value = struct_pb2.Struct()
+    json_format.ParseDict(window.metadata, struct_value)
+    window_pb.metadata = struct_value
 
     with grpc.insecure_channel(envs.ORCASERVER) as channel:
         stub = service_pb2_grpc.OrcaCoreStub(channel)
