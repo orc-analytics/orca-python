@@ -12,8 +12,6 @@ Every30Second = WindowType(
 
 @proc.algorithm("MyAlgo", "1.0.0", Every30Second)
 def my_algorithm(params: ExecutionParams) -> Dict[str, int]:
-    print("PARAMS")
-    print(params)
     time.sleep(5)
     return {"result": 42}
 
