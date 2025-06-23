@@ -1,8 +1,9 @@
 import random
 
 import pytest
+import service_pb2 as pb
 
-from orca_python import Processor, WindowType
+from orca_python import Processor, WindowType, ExecutionParams
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
 
 proc = Processor("ml")
@@ -15,13 +16,13 @@ def test_algorithm_arg_parsing_fails():
     with pytest.raises(InvalidAlgorithmArgument):
 
         @proc.algorithm("TestAlgorithm", "1.0.0+abcd", "WindowA", "1.0.0")
-        def test_algorithm():
+        def test_algorithm(params: ExecutionParams):
             return None
 
     with pytest.raises(InvalidAlgorithmArgument):
 
         @proc.algorithm("Test_Algorithm", "1.0.0", "WindowA", "1.0.0")
-        def test_algorithm():
+        def test_algorithm(params: ExecutionParams):
             return None
 
 
@@ -31,7 +32,7 @@ def test_algo_arg_parsing_suceeds():
     WindowA = WindowType(name="TestAlgorithm", version="1.0.0", description="Test")
 
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
-    def test_algorithm():
+    def test_algorithm(params: ExecutionParams):
         return None
 
     assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
@@ -46,12 +47,21 @@ def test_valid_dependency():
     WindowA = WindowType(name="WindowA", version="1.0.0", description="Test")
 
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
-    def test_algorithm():
+    def test_algorithm(params: ExecutionParams):
         return algo_1_result
 
+    window_pb = pb.Window(
+        time_from=0,
+        time_to=1,
+        window_type_name=WindowA.name,
+        window_type_version=WindowA.version,
+        origin="test",
+    )
     assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
     assert (
-        proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
+        proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn(
+            params=ExecutionParams(window=window_pb)
+        )
         == algo_1_result
     )
 
@@ -59,7 +69,7 @@ def test_valid_dependency():
     WindowB = WindowType(name="WindowB", version="1.0.0", description="Test")
 
     @proc.algorithm("TestAlgorithm", "1.2.0", WindowB)
-    def test_algorithm_2():
+    def test_algorithm_2(params: ExecutionParams):
         return algo_2_result
 
     @proc.algorithm(
@@ -68,16 +78,20 @@ def test_valid_dependency():
         WindowA,
         depends_on=[test_algorithm, test_algorithm_2],
     )
-    def test_algorithm_3():
+    def test_algorithm_3(params: ExecutionParams):
         return None
 
     # confirm algorithm execution order.
     assert (
-        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0]()
+        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][0](
+            params=ExecutionParams(window=window_pb)
+        )
         == algo_1_result
     )
     assert (
-        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1]()
+        proc._algorithmsSingleton._dependencyFns["NewAlgorithm_1.0.0"][1](
+            params=ExecutionParams(window=window_pb)
+        )
         == algo_2_result
     )
 
@@ -94,7 +108,7 @@ def test_bad_dependency():
     with pytest.raises(InvalidDependency):
 
         @proc.algorithm("NewAlgorithm", "1.0.0", WindowA, depends_on=[undecorated])
-        def new_algorithm():
+        def new_algorithm(params: ExecutionParams):
             return None
 
 
@@ -109,7 +123,7 @@ def test_registration_works():
     WindowB = WindowType("WindowB", "1.0.0", "Test")
 
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
-    def test_algorithm():
+    def test_algorithm(params: ExecutionParams):
         return algo_1_result
 
     assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
@@ -119,7 +133,7 @@ def test_registration_works():
     )
 
     @proc.algorithm("TestAlgorithm", "1.2.0", WindowB)
-    def test_algorithm_2():
+    def test_algorithm_2(params: ExecutionParams):
         return algo_2_result
 
     @proc.algorithm(
@@ -128,7 +142,7 @@ def test_registration_works():
         WindowA,
         depends_on=[test_algorithm, test_algorithm_2],
     )
-    def test_algorithm_3():
+    def test_algorithm_3(params: ExecutionParams):
         return None
 
     proc.Register()

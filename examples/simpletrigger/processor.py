@@ -1,7 +1,7 @@
 import time
 from typing import Dict
 
-from orca_python import Processor, WindowType
+from orca_python import Processor, WindowType, ExecutionParams
 
 proc = Processor("ml")
 
@@ -11,7 +11,7 @@ Every30Second = WindowType(
 
 
 @proc.algorithm("MyAlgo", "1.0.0", Every30Second)
-def my_algorithm() -> Dict[str, int]:
+def my_algorithm(params: ExecutionParams) -> Dict[str, int]:
     time.sleep(5)
     return {"result": 42}
 
