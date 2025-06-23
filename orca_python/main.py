@@ -56,6 +56,25 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
+class WindowType:
+    name: str
+    version: str
+    description: str
+
+    def __post__init__(self) -> None:
+        if not re.match(WINDOW_NAME, self.name):
+            raise InvalidAlgorithmArgument(
+                f"Window name '{self.name}' must be in PascalCase"
+            )
+
+        if not re.match(SEMVER_PATTERN, self.version):
+            raise InvalidAlgorithmArgument(
+                f"Window version '{self.version}' must follow basic semantic "
+                "versioning (e.g., '1.0.0') without release portions"
+            )
+
+
+@dataclass
 class Window:
     time_from: int
     time_to: int
@@ -111,6 +130,7 @@ class Algorithm:
     version: str
     window_name: str
     window_version: str
+    window_description: str
     exec_fn: AlgorithmFn
     processor: str
     runtime: str
@@ -509,6 +529,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             # Add window type
             algo_msg.window_type.name = algorithm.window_name
             algo_msg.window_type.version = algorithm.window_version
+            algo_msg.window_type.description = algorithm.window_description
 
             # Add dependencies if they exist
             if algorithm.full_name in self._algorithmsSingleton._dependencies:
@@ -585,8 +606,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         self,
         name: str,
         version: str,
-        window_name: str,
-        window_version: str,
+        window_type: WindowType,
         depends_on: List[Callable[..., Any]] = [],
     ) -> Callable[[T], T]:
         """
@@ -595,10 +615,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         Args:
             name (str): Algorithm name (PascalCase).
             version (str): Semantic version (e.g., "1.0.0").
-            window_name (str): Triggering window name (PascalCase).
-            window_version (str): Semantic version of the window.
+            window_type (WindowType): Triggering window type
             depends_on (List[Callable]): List of dependent algorithm functions.
-
         Returns:
             Callable[[T], T]: The decorated function.
 
@@ -614,17 +632,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         if not re.match(SEMVER_PATTERN, version):
             raise InvalidAlgorithmArgument(
                 f"Version '{version}' must follow basic semantic "
-                "versioning (e.g., '1.0.0') without release portions"
-            )
-
-        if not re.match(WINDOW_NAME, window_name):
-            raise InvalidAlgorithmArgument(
-                f"Window name '{window_name}' must be in PascalCase"
-            )
-
-        if not re.match(SEMVER_PATTERN, window_version):
-            raise InvalidAlgorithmArgument(
-                f"Window version '{window_version}' must follow basic semantic "
                 "versioning (e.g., '1.0.0') without release portions"
             )
 
@@ -660,8 +667,9 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algorithm = Algorithm(
                 name=name,
                 version=version,
-                window_name=window_name,
-                window_version=window_version,
+                window_name=window_type.name,
+                window_version=window_type.version,
+                window_description=window_type.description,
                 exec_fn=wrapper,
                 processor=self._name,
                 runtime=sys.version,

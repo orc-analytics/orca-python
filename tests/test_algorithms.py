@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from orca_python import Processor
+from orca_python import Processor, WindowType
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
 
 proc = Processor("ml")
@@ -28,8 +28,9 @@ def test_algorithm_arg_parsing_fails():
 def test_algo_arg_parsing_suceeds():
     """Algorithm arg parsing succeeds."""
     proc._algorithmsSingleton._flush()
+    WindowA = WindowType(name="TestAlgorithm", version="1.0.0", description="Test")
 
-    @proc.algorithm("TestAlgorithm", "1.0.0", "WindowA", "1.0.0")
+    @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm():
         return None
 
@@ -42,7 +43,9 @@ def test_valid_dependency():
     algo_1_result = random.random()
     algo_2_result = random.random()
 
-    @proc.algorithm("TestAlgorithm", "1.0.0", "WindowA", "1.0.0")
+    WindowA = WindowType(name="WindowA", version="1.0.0", description="Test")
+
+    @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm():
         return algo_1_result
 
@@ -52,15 +55,17 @@ def test_valid_dependency():
         == algo_1_result
     )
 
-    @proc.algorithm("TestAlgorithm", "1.2.0", "WindowB", "1.0.0")
+    WindowA = WindowType(name="WindowA", version="1.0.0", description="Test")
+    WindowB = WindowType(name="WindowB", version="1.0.0", description="Test")
+
+    @proc.algorithm("TestAlgorithm", "1.2.0", WindowB)
     def test_algorithm_2():
         return algo_2_result
 
     @proc.algorithm(
         "NewAlgorithm",
         "1.0.0",
-        "WindowA",
-        "1.0.0",
+        WindowA,
         depends_on=[test_algorithm, test_algorithm_2],
     )
     def test_algorithm_3():
@@ -80,6 +85,7 @@ def test_valid_dependency():
 def test_bad_dependency():
     """Dependencies are poorly managed"""
     proc._algorithmsSingleton._flush()
+    WindowA = WindowType(name="WindowA", version="1.0.0", description="Test")
 
     # invalid dependency as not an algorithm
     def undecorated():
@@ -87,9 +93,7 @@ def test_bad_dependency():
 
     with pytest.raises(InvalidDependency):
 
-        @proc.algorithm(
-            "NewAlgorithm", "1.0.0", "WindowA", "1.0.0", depends_on=[undecorated]
-        )
+        @proc.algorithm("NewAlgorithm", "1.0.0", WindowA, depends_on=[undecorated])
         def new_algorithm():
             return None
 
@@ -101,7 +105,10 @@ def test_registration_works():
     algo_1_result = random.random()
     algo_2_result = random.random()
 
-    @proc.algorithm("TestAlgorithm", "1.0.0", "WindowA", "1.0.0")
+    WindowA = WindowType("WindowA", "1.0.0", "Test")
+    WindowB = WindowType("WindowB", "1.0.0", "Test")
+
+    @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm():
         return algo_1_result
 
@@ -111,15 +118,14 @@ def test_registration_works():
         == algo_1_result
     )
 
-    @proc.algorithm("TestAlgorithm", "1.2.0", "WindowB", "1.0.0")
+    @proc.algorithm("TestAlgorithm", "1.2.0", WindowB)
     def test_algorithm_2():
         return algo_2_result
 
     @proc.algorithm(
         "NewAlgorithm",
         "1.0.0",
-        "WindowA",
-        "1.0.0",
+        WindowA,
         depends_on=[test_algorithm, test_algorithm_2],
     )
     def test_algorithm_3():
