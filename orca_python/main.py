@@ -27,8 +27,8 @@ from typing import (
     Callable,
     Iterable,
     Optional,
+    Protocol,
     Generator,
-    TypeAlias,
     AsyncGenerator,
 )
 from concurrent import futures
@@ -49,7 +49,16 @@ ALGORITHM_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 SEMVER_PATTERN = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
 WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 
-AlgorithmFn: TypeAlias = Callable[..., Any]
+
+@dataclass
+class ExecutionParams:
+    window: pb.Window
+    dependencies: Optional[Iterable[pb.AlgorithmResult]] = None
+
+
+class AlgorithmFn(Protocol):
+    def __call__(self, params: ExecutionParams, *args: Any, **kwargs: Any) -> Any: ...
+
 
 T = TypeVar("T", bound=AlgorithmFn)
 
@@ -83,12 +92,6 @@ class Window:
     version: str
     origin: str
     metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class ExecutionParams:
-    window: pb.Window
-    dependencies: Optional[Iterable[pb.AlgorithmResult]] = None
 
 
 def EmitWindow(window: Window) -> None:
@@ -207,12 +210,11 @@ class Algorithms:
                 break
 
         if not dependencyAlgo:
+            dep_name = getattr(dependency, "__name__", "<unknown>")
             LOGGER.error(
-                f"Failed to find registered algorithm for dependency: {dependency.__name__}"
+                f"Failed to find registered algorithm for dependency: {dep_name}"
             )
-            raise ValueError(
-                f"Dependency {dependency.__name__} not found in registered algorithms"
-            )
+            raise ValueError(f"Dependency {dep_name} not found in reg=ms")
 
         if algorithm not in self._dependencyFns:
             self._dependencyFns[algorithm] = [dependency]
@@ -704,6 +706,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             # needs to be defined before a dependency can be created, and you can only register depencenies
             # once. But when dependencies are grabbed from a server, circular dependencies will be possible
 
-            return wrapper  # type: ignore
+            return wrapper  # type: ignore[return-value]
 
         return inner
