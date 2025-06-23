@@ -29,6 +29,7 @@ def test_algo_arg_parsing_suceeds():
     """Algorithm arg parsing succeeds."""
     proc._algorithmsSingleton._flush()
     WindowA = WindowType(name="TestAlgorithm", version="1.0.0", description="Test")
+
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm():
         return None
@@ -53,7 +54,7 @@ def test_valid_dependency():
         proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
         == algo_1_result
     )
-    
+
     WindowA = WindowType(name="WindowA", version="1.0.0", description="Test")
     WindowB = WindowType(name="WindowB", version="1.0.0", description="Test")
 
@@ -91,9 +92,8 @@ def test_bad_dependency():
         return None
 
     with pytest.raises(InvalidDependency):
-        @proc.algorithm(
-            "NewAlgorithm", "1.0.0", WindowA, depends_on=[undecorated]
-        )
+
+        @proc.algorithm("NewAlgorithm", "1.0.0", WindowA, depends_on=[undecorated])
         def new_algorithm():
             return None
 
