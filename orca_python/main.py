@@ -605,18 +605,17 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algo_msg.version = algorithm.version
 
             # manage the return type of the algorithm
-            
-            if algorithm.result_type == ValueResult:
+            if algorithm.result_type == ValueResult:  # type: ignore
                 result_type_pb = pb.ResultType.VALUE
-            elif algorithm.result_type == StructResult:
+            elif algorithm.result_type == StructResult:  # type: ignore
                 result_type_pb = pb.ResultType.STRUCT
-            elif algorithm.result_type == ArrayResult:
+            elif algorithm.result_type == ArrayResult:  # type: ignore
                 result_type_pb = pb.ResultType.ARRAY
             else:
                 raise InvalidAlgorithmReturnType(
                     f"Algorithm has return type {algorithm.result_type}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`"
                 )
-            
+
             ## add the result type
             algo_msg.result_type = result_type_pb
 
