@@ -611,9 +611,11 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 result_type_pb = pb.ResultType.STRUCT
             elif algorithm.result_type == ArrayResult:  # type: ignore
                 result_type_pb = pb.ResultType.ARRAY
+            elif algorithm.result_type == NoneResult:  # type: ignore
+                result_type_pb = pb.ResultType.NONE
             else:
                 raise InvalidAlgorithmReturnType(
-                    f"Algorithm has return type {algorithm.result_type}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`"
+                    f"Algorithm has return type {algorithm.result_type}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`, `NoneResult`"
                 )
 
             ## add the result type
@@ -759,7 +761,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             returnType = sig.return_annotation
             if not is_type_in_union(returnType, returnResult):  # type: ignore
                 raise InvalidAlgorithmReturnType(
-                    f"Algorithm has return type {sig.return_annotation}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`"
+                    f"Algorithm has return type {sig.return_annotation}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`, `NoneResult`"
                 )
 
             algorithm = Algorithm(
