@@ -6,6 +6,10 @@ class InvalidAlgorithmArgument(BaseOrcaException):
     """Raised when an argument to `@algorithm` is not correct"""
 
 
+class InvalidAlgorithmReturnType(BaseOrcaException):
+    """Raised when the return type of an algorithm is not valid"""
+
+
 class InvalidDependency(BaseOrcaException):
     """Raised when a dependency is invalid"""
 

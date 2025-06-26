@@ -19,10 +19,13 @@ logging.basicConfig(
 )
 
 import time
+import types
+import typing
 from typing import (
     Any,
     Dict,
     List,
+    Union,
     TypeVar,
     Callable,
     Iterable,
@@ -31,6 +34,7 @@ from typing import (
     Generator,
     AsyncGenerator,
 )
+from inspect import signature
 from concurrent import futures
 from dataclasses import field, dataclass
 
@@ -42,25 +46,17 @@ from google.protobuf import json_format
 from service_pb2_grpc import OrcaProcessorServicer
 
 from orca_python import envs
-from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
+from orca_python.exceptions import (
+    InvalidDependency,
+    InvalidAlgorithmArgument,
+    InvalidAlgorithmReturnType,
+)
 
 # Regex patterns for validation
 ALGORITHM_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 SEMVER_PATTERN = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
 WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 
-
-@dataclass
-class ExecutionParams:
-    window: pb.Window
-    dependencies: Optional[Iterable[pb.AlgorithmResult]] = None
-
-
-class AlgorithmFn(Protocol):
-    def __call__(self, params: ExecutionParams, *args: Any, **kwargs: Any) -> Any: ...
-
-
-T = TypeVar("T", bound=AlgorithmFn)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -82,6 +78,74 @@ class WindowType:
                 f"Window version '{self.version}' must follow basic semantic "
                 "versioning (e.g., '1.0.0') without release portions"
             )
+
+
+@dataclass
+class StructResult:
+    value: Dict[str, Any]
+
+    def __init__(self, value: Dict[str, Any]) -> None:
+        """
+        Produce a struct/dictionary based result
+
+        Args:
+            value: The result to produce. e.g.: {'min': -1.1, 'median': 4.2, 'max': 5.0}
+        """
+        self.value = value
+
+
+@dataclass
+class ValueResult:
+    value: float | int | bool
+
+    def __init__(self, value: float | int | bool) -> None:
+        """
+        Produce a value result
+
+        Args:
+            value: The result to produce. E.g. 1.0
+        """
+        self.value = value
+
+
+@dataclass
+class ArrayResult:
+    value: Iterable[float | int | bool]
+
+    def __init__(self, value: Iterable[float | int | bool]) -> None:
+        """
+        Produce an array result
+
+        Args:
+            value: The result to produce. E.g. [1, 2, 3, 4, 5]
+        """
+        self.value = value
+
+
+class NoneResult:
+    """
+    The `None` result type
+    """
+
+    value: None = None
+
+
+returnResult = StructResult | ArrayResult | ValueResult | NoneResult
+
+
+@dataclass
+class ExecutionParams:
+    window: pb.Window
+    dependencies: Optional[Iterable[pb.AlgorithmResult]] = None
+
+
+class AlgorithmFn(Protocol):
+    def __call__(
+        self, params: ExecutionParams, *args: Any, **kwargs: Any
+    ) -> returnResult: ...
+
+
+T = TypeVar("T", bound=AlgorithmFn)
 
 
 @dataclass
@@ -144,6 +208,7 @@ class Algorithm:
     exec_fn: AlgorithmFn
     processor: str
     runtime: str
+    result_type: returnResult
 
     @property
     def full_name(self) -> str:
@@ -539,6 +604,21 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algo_msg.name = algorithm.name
             algo_msg.version = algorithm.version
 
+            # manage the return type of the algorithm
+            if algorithm.result_type == ValueResult:  # type: ignore
+                result_type_pb = pb.ResultType.VALUE
+            elif algorithm.result_type == StructResult:  # type: ignore
+                result_type_pb = pb.ResultType.STRUCT
+            elif algorithm.result_type == ArrayResult:  # type: ignore
+                result_type_pb = pb.ResultType.ARRAY
+            else:
+                raise InvalidAlgorithmReturnType(
+                    f"Algorithm has return type {algorithm.result_type}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`"
+                )
+
+            ## add the result type
+            algo_msg.result_type = result_type_pb
+
             # Add window type
             algo_msg.window_type.name = algorithm.window_name
             algo_msg.window_type.version = algorithm.window_version
@@ -653,7 +733,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 params: ExecutionParams,
                 *args: Any,
                 **kwargs: Any,
-            ) -> Any:
+            ) -> returnResult:
                 LOGGER.debug(f"Executing algorithm {name}_{version}")
                 try:
                     # setup ready for the algo
@@ -675,6 +755,13 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     )
                     raise
 
+            sig = signature(algo)
+            returnType = sig.return_annotation
+            if not is_type_in_union(returnType, returnResult):  # type: ignore
+                raise InvalidAlgorithmReturnType(
+                    f"Algorithm has return type {sig.return_annotation}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`"
+                )
+
             algorithm = Algorithm(
                 name=name,
                 version=version,
@@ -684,6 +771,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 exec_fn=wrapper,
                 processor=self._name,
                 runtime=sys.version,
+                result_type=returnType,
             )
 
             self._algorithmsSingleton._add_algorithm(algorithm.full_name, algorithm)
@@ -709,3 +797,26 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             return wrapper  # type: ignore[return-value]
 
         return inner
+
+
+def is_type_in_union(target_type, union_type):  # type: ignore
+    """
+    Check if target_type is contained within union_type.
+    Works with both new syntax (int | float) and typing.Union.
+    """
+    try:
+        # handle new union syntax (Python 3.10+) - types.UnionType
+        if isinstance(union_type, types.UnionType):
+            return target_type in union_type.__args__
+
+        # handle typing.Union syntax
+        origin = getattr(typing, "get_origin", lambda x: None)(union_type)
+        if origin is Union:
+            args = getattr(typing, "get_args", lambda x: ())(union_type)
+            return target_type in args
+
+        # handle single type (not a union)
+        return target_type == union_type
+
+    except (AttributeError, TypeError):
+        return False
