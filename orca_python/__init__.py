@@ -2,6 +2,7 @@ from orca_python.main import (
     Window,
     Processor,
     EmitWindow,
+    NoneResult,
     WindowType,
     ArrayResult,
     ValueResult,
@@ -14,8 +15,9 @@ __all__ = [
     "EmitWindow",
     "Window",
     "WindowType",
-    "ExecutionParams",
     "StructResult",
     "ValueResult",
     "ArrayResult",
+    "NoneResult",
+    "ExecutionParams",
 ]

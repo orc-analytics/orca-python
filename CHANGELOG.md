@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.0] - 26-06-2025
+
+## Added
+
+- Explicit return types to algorithms
+
 ## [v0.5.0] - 23-06-2025
 
 # Changed
