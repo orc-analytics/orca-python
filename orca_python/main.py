@@ -57,7 +57,9 @@ class ExecutionParams:
 
 
 class AlgorithmFn(Protocol):
-    def __call__(self, params: ExecutionParams, *args: Any, **kwargs: Any) -> Any: ...
+    def __call__(
+        self, params: ExecutionParams, *args: Any, **kwargs: Any
+    ) -> Result: ...
 
 
 T = TypeVar("T", bound=AlgorithmFn)
@@ -82,6 +84,49 @@ class WindowType:
                 f"Window version '{self.version}' must follow basic semantic "
                 "versioning (e.g., '1.0.0') without release portions"
             )
+
+
+@dataclass
+class Result: ...
+
+
+class StructResult(Result):
+    value: Dict[str, Any]
+
+    def __init__(self, value: Dict[str, Any]) -> None:
+        """
+        Produce a struct/dictionary based result
+
+        Args:
+            value: The result to produce. e.g.: {'min': -1.1, 'median': 4.2, 'max': 5.0}
+        """
+        self.value = value
+
+
+class ValueResult(Result):
+    value: float | int | bool
+
+    def __init__(self, value: float | int | bool) -> None:
+        """
+        Produce a value result
+
+        Args:
+            value: The result to produce. E.g. 1.0
+        """
+        self.value = value
+
+
+class ArrayResult(Result):
+    value: Iterable[float | int | bool]
+
+    def __init__(self, value: Iterable[float | int | bool]) -> None:
+        """
+        Produce an array result
+
+        Args:
+            value: The result to produce. E.g. [1, 2, 3, 4, 5]
+        """
+        self.value = value
 
 
 @dataclass
@@ -653,7 +698,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 params: ExecutionParams,
                 *args: Any,
                 **kwargs: Any,
-            ) -> Any:
+            ) -> Result:
                 LOGGER.debug(f"Executing algorithm {name}_{version}")
                 try:
                     # setup ready for the algo
