@@ -415,61 +415,37 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             algoResult = await loop.run_in_executor(None, algo.exec_fn, params)
 
-            # create result based on the return type
-            current_time = int(time.time())  # Current timestamp in seconds
-
-            if isinstance(algoResult, dict):
-                # for dictionary results, use struct_value
+            # depending on algo result type, map to whatever instance
+            if algo.result_type == StructResult:  # type: ignore
                 struct_value = struct_pb2.Struct()
-                json_format.ParseDict(algoResult, struct_value)
+                json_format.ParseDict(algoResult.value, struct_value)
 
                 resultPb = pb.Result(
-                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,  # Note: Using the actual enum from the proto
+                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
                     struct_value=struct_value,
-                    timestamp=current_time,
                 )
-            elif isinstance(algoResult, float) or isinstance(algoResult, int):
+
+            elif algo.result_type == ValueResult:  # type: ignore
                 # for single numeric values
                 resultPb = pb.Result(
                     status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                    single_value=float(algoResult),  # Convert to float as per proto
-                    timestamp=current_time,
+                    single_value=algoResult.value,
                 )
-            elif isinstance(algoResult, list) and all(
-                isinstance(x, (int, float)) for x in algoResult
-            ):
+            elif algo.result_type == ArrayResult:  # type: ignore
                 # for lists of numeric values
                 float_array = pb.FloatArray(values=algoResult)
                 resultPb = pb.Result(
                     status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                    float_values=float_array,
-                    timestamp=current_time,
+                    float_values=float_array.values,
                 )
             else:
-                # try to convert to struct as a fallback
-                try:
-                    struct_value = struct_pb2.Struct()
-                    # convert to dict if possible, otherwise use string representation
-                    if hasattr(algoResult, "__dict__"):
-                        result_dict = algoResult.__dict__
-                    else:
-                        result_dict = {"value": str(algoResult)}
-
-                    json_format.ParseDict(result_dict, struct_value)
-                    resultPb = pb.Result(
-                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                        struct_value=struct_value,
-                        timestamp=current_time,
-                    )
-                except Exception as conv_error:
-                    LOGGER.error(
-                        f"Failed to convert result to protobuf: {str(conv_error)}"
-                    )
-                    # create a handled failure result
-                    resultPb = pb.Result(
-                        status=pb.ResultStatus.RESULT_STATUS_HANDLED_FAILED,
-                        timestamp=current_time,
-                    )
+                LOGGER.error(
+                    f"Algorithm {algo.name} {algo.version} has unhandled return type {algo.result_type}"
+                )
+                # create a handled failure result
+                resultPb = pb.Result(
+                    status=pb.ResultStatus.RESULT_STATUS_HANDLED_FAILED,
+                )
 
             # create the algorithm result
             algoResultPb = pb.AlgorithmResult(
