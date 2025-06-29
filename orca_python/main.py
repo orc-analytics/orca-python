@@ -389,7 +389,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             current_time = int(time.time())  # Current timestamp in seconds
 
             if isinstance(algoResult, dict):
-                # For dictionary results, use struct_value
+                # for dictionary results, use struct_value
                 struct_value = struct_pb2.Struct()
                 json_format.ParseDict(algoResult, struct_value)
 
