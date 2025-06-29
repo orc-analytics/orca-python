@@ -10,7 +10,10 @@ import re
 import sys
 import asyncio
 import logging
+import datetime as dt
 import traceback
+
+from google.protobuf import timestamp_pb2
 
 logging.basicConfig(
     level=logging.INFO,
@@ -150,8 +153,8 @@ T = TypeVar("T", bound=AlgorithmFn)
 
 @dataclass
 class Window:
-    time_from: int
-    time_to: int
+    time_from: dt.datetime
+    time_to: dt.datetime
     name: str
     version: str
     origin: str
@@ -167,9 +170,15 @@ def EmitWindow(window: Window) -> None:
     """
     LOGGER.info(f"Emitting window: {window}")
 
+    _time_from = timestamp_pb2.Timestamp()
+    _time_from.FromDatetime(window.time_from)
+
+    _time_to = timestamp_pb2.Timestamp()
+    _time_to.FromDatetime(window.time_to)
+
     window_pb = pb.Window()
-    window_pb.time_to = window.time_to
-    window_pb.time_from = window.time_from
+    window_pb.time_to = _time_from
+    window_pb.time_from = _time_to
     window_pb.window_type_name = window.name
     window_pb.window_type_version = window.version
     window_pb.origin = window.origin

@@ -1,4 +1,5 @@
 import time
+import datetime as dt
 
 import schedule
 
@@ -6,9 +7,9 @@ from orca_python import Window, EmitWindow
 
 
 def emitWindow() -> None:
-    now = int(time.time())
+    now = dt.datetime.now()
     window = Window(
-        time_from=now - 30,
+        time_from=now - dt.timedelta(seconds=30),
         time_to=now,
         name="Every30Second",
         version="1.0.0",

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.1] - 29-06-2025
+
+## Fixed
+
+- `time_from` and `time_to` types in the window definition
+
 ## [v0.7.0] - 29-06-2025
 
 ## Changed
@@ -64,7 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.6.1...HEAD
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.1...HEAD
+[v0.7.1]: https://github.com/Predixus/Orca/compare/v0.7.0...v0.7.1
+[v0.7.0]: https://github.com/Predixus/Orca/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/Predixus/Orca/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/Predixus/Orca/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/Predixus/Orca/compare/v0.4.0...v0.5.0

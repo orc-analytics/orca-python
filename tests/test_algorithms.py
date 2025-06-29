@@ -2,6 +2,7 @@ import random
 
 import pytest
 import service_pb2 as pb
+from google.protobuf import timestamp_pb2
 
 from orca_python import (
     Processor,
@@ -11,7 +12,6 @@ from orca_python import (
     ExecutionParams,
 )
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
-from google.protobuf import timestamp_pb2
 
 proc = Processor("ml")
 
@@ -56,9 +56,9 @@ def test_valid_dependency():
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm(params: ExecutionParams) -> ValueResult:
         return ValueResult(algo_1_result)
-    
-    _time_from =timestamp_pb2.Timestamp(seconds=0)
-    _time_to =timestamp_pb2.Timestamp(seconds=1)
+
+    _time_from = timestamp_pb2.Timestamp(seconds=0)
+    _time_to = timestamp_pb2.Timestamp(seconds=1)
     window_pb = pb.Window(
         time_from=_time_from,
         time_to=_time_to,
