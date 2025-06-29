@@ -198,8 +198,8 @@ def EmitWindow(window: Window) -> None:
     _time_to.FromDatetime(window.time_to)
 
     window_pb = pb.Window()
-    window_pb.time_to = _time_from
-    window_pb.time_from = _time_to
+    window_pb.time_to.CopyFrom(_time_to)
+    window_pb.time_from.CopyFrom(_time_from)
     window_pb.window_type_name = window.name
     window_pb.window_type_version = window.version
     window_pb.origin = window.origin

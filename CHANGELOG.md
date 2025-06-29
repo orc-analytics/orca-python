@@ -7,39 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.3] - 29-06-2025
+
+## Fixed
+
+- `time_from` & `time_to` message copying
+
 ## [v0.7.2] - 29-06-2025
 
-## Added
+### Added
 
 - Usability changes to `ExecutionParams` where window can either be a protobuf or a `Window` class
 
 ## [v0.7.1] - 29-06-2025
 
-## Fixed
+### Fixed
 
 - `time_from` and `time_to` types in the window definition
 
 ## [v0.7.0] - 29-06-2025
 
-## Changed
+### Changed
 
 - Orca core to get latest protobuf definitions
 
 ## [v0.6.1] - 26-06-2025
 
-## Added
+### Added
 
 - None result type
 
 ## [v0.6.0] - 26-06-2025
 
-## Added
+### Added
 
 - Explicit return types to algorithms
 
 ## [v0.5.0] - 23-06-2025
 
-# Changed
+### Changed
 
 - Stricter typing to algorithm function definitions
 
