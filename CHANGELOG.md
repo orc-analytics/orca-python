@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.2] - 29-06-2025
+
+## Added
+
+- Usability changes to `ExecutionParams` where window can either be a protobuf or a `Window` class
+
 ## [v0.7.1] - 29-06-2025
 
 ## Fixed

@@ -13,7 +13,7 @@ import logging
 import datetime as dt
 import traceback
 
-from google.protobuf import timestamp_pb2
+from google.protobuf import json_format, timestamp_pb2
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +51,7 @@ from service_pb2_grpc import OrcaProcessorServicer
 from orca_python import envs
 from orca_python.exceptions import (
     InvalidDependency,
+    InvalidWindowArgument,
     InvalidAlgorithmArgument,
     InvalidAlgorithmReturnType,
 )
@@ -137,9 +138,39 @@ returnResult = StructResult | ArrayResult | ValueResult | NoneResult
 
 
 @dataclass
+class Window:
+    time_from: dt.datetime
+    time_to: dt.datetime
+    name: str
+    version: str
+    origin: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class ExecutionParams:
-    window: pb.Window
+    window: Window
     dependencies: Optional[Iterable[pb.AlgorithmResult]] = None
+
+    def __init__(
+        self,
+        window: Window | pb.Window,
+        dependencies: Optional[Iterable[pb.AlgorithmResult]] = None,
+    ):
+        if isinstance(window, Window):
+            self.window = window
+        elif isinstance(window, pb.Window):
+            self.window = Window(
+                time_from=window.time_from.ToDatetime(),
+                time_to=window.time_to.ToDatetime(),
+                name=window.window_type_name,
+                version=window.window_type_version,
+                origin=window.origin,
+                metadata=json_format.MessageToDict(window.metadata),
+            )
+        else:
+            raise InvalidWindowArgument(f"window of type {type(window)} not handled")
+        self.dependencies = dependencies
 
 
 class AlgorithmFn(Protocol):
@@ -149,16 +180,6 @@ class AlgorithmFn(Protocol):
 
 
 T = TypeVar("T", bound=AlgorithmFn)
-
-
-@dataclass
-class Window:
-    time_from: dt.datetime
-    time_to: dt.datetime
-    name: str
-    version: str
-    origin: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 def EmitWindow(window: Window) -> None:

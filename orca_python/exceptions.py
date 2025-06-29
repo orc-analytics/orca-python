@@ -10,6 +10,10 @@ class InvalidAlgorithmReturnType(BaseOrcaException):
     """Raised when the return type of an algorithm is not valid"""
 
 
+class InvalidWindowArgument(BaseOrcaException):
+    """Raised when an argument to the Window class is not valid"""
+
+
 class InvalidDependency(BaseOrcaException):
     """Raised when a dependency is invalid"""
 
