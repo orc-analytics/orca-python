@@ -11,6 +11,7 @@ from orca_python import (
     ExecutionParams,
 )
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
+from google.protobuf import timestamp_pb2
 
 proc = Processor("ml")
 
@@ -55,10 +56,12 @@ def test_valid_dependency():
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm(params: ExecutionParams) -> ValueResult:
         return ValueResult(algo_1_result)
-
+    
+    _time_from =timestamp_pb2.Timestamp(seconds=0)
+    _time_to =timestamp_pb2.Timestamp(seconds=1)
     window_pb = pb.Window(
-        time_from=0,
-        time_to=1,
+        time_from=_time_from,
+        time_to=_time_to,
         window_type_name=WindowA.name,
         window_type_version=WindowA.version,
         origin="test",
