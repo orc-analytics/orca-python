@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Improper exception handling on lack of environment variables, and environment variable name change.
+
 ## [v0.7.4] - 29-06-2025
 
-## Fixed
+### Fixed
 
 - Return type handling
 
 ## [v0.7.3] - 29-06-2025
 
-## Fixed
+### Fixed
 
 - `time_from` & `time_to` message copying
 
