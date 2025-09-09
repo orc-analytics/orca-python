@@ -50,6 +50,10 @@ jobs:
       - name: Run tests
         run: |
           poetry run poe test
+        env:
+          ORCA_CORE: "test"
+          PROCESSOR_PORT: "test"
+          PROCESSOR_ADDRESS: "test"
 
       - name: Run build
         run: |

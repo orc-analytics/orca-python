@@ -65,10 +65,10 @@ proc.Start()
 Then run your python file to register it with orca-core:
 
 ```bash
- ORCASERVER=grpc://localhost:32770 HOST=172.18.0.1 python main.py
+ ORCA_CORE=grpc://localhost:32770 PROCESSOR_ADDRESS=172.18.0.1 PROCESSOR_PORT=8080 python main.py
 ```
 
-Replace the contents of `ORCASERVER` and `HOST` with the output of `orca status`.
+Replace the contents of `ORCA_CORE`, `PROCESSOR_ADDRESS` and `PROCESSOR_PORT` with the output of `orca status`.
 
 6. Emit a window to orcacore
    TBD
