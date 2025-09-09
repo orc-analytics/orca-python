@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.5] - 09-09-2025
+
 ### Fixed
 
 - Improper exception handling on lack of environment variables, and environment variable name change.
@@ -92,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.4...HEAD
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.5...HEAD
+[v0.7.5]: https://github.com/Predixus/Orca/compare/v0.7.4...v0.7.5
 [v0.7.4]: https://github.com/Predixus/Orca/compare/v0.7.3...v0.7.4
 [v0.7.3]: https://github.com/Predixus/Orca/compare/v0.7.2...v0.7.3
 [v0.7.2]: https://github.com/Predixus/Orca/compare/v0.7.1...v0.7.2
