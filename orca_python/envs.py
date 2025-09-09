@@ -5,18 +5,18 @@ from orca_python.exceptions import MissingDependency
 
 
 def getenvs() -> Tuple[str, ...]:
-    orcaserver = os.getenv("ORCASERVER", "")
+    orcaserver = os.getenv("ORCA_CORE", "")
     if orcaserver == "":
-        MissingDependency("ORCASERVER is required")
+        raise MissingDependency("ORCA_CORE is required")
     orcaserver = orcaserver.lstrip("grpc://")
 
-    port = os.getenv("PORT", "")
+    port = os.getenv("PROCESSOR_PORT", "")
     if port == "":
-        MissingDependency("PORT required")
+        raise MissingDependency("PROCESSOR_PORT required")
 
-    host = os.getenv("HOST", "")
+    host = os.getenv("PROCESSOR_ADDRESS", "")
     if host == "":
-        MissingDependency("HOST is required")
+        raise MissingDependency("PROCESSOR_ADDRESS is required")
 
     return orcaserver, port, host
 
