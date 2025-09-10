@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.7] - 10-09-2025
+
+### Changed
+
+- The version of Orca core to use.
+
 ## [v0.7.6] - 10-09-2025
 
 ### Fixed
