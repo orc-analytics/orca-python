@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.8] - 10-09-2025
+
+### Fixed
+
+- Issue in the OrcaCore service name
+
 ## [v0.7.7] - 10-09-2025
 
 ### Changed
@@ -106,7 +112,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.6...HEAD
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.8...HEAD
+[v0.7.8]: https://github.com/Predixus/Orca/compare/v0.7.7...v0.7.8
+[v0.7.7]: https://github.com/Predixus/Orca/compare/v0.7.6...v0.7.7
 [v0.7.6]: https://github.com/Predixus/Orca/compare/v0.7.5...v0.7.6
 [v0.7.5]: https://github.com/Predixus/Orca/compare/v0.7.4...v0.7.5
 [v0.7.4]: https://github.com/Predixus/Orca/compare/v0.7.3...v0.7.4

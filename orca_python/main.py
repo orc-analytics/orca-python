@@ -214,13 +214,13 @@ def EmitWindow(window: Window) -> None:
         with grpc.secure_channel(
             envs.ORCASERVER, grpc.ssl_channel_credentials()
         ) as channel:
-            stub = service_pb2_grpc.OrcaCoreStub(channel)
+            stub = service_pb2_grpc.OrcaCore(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
     else:
         # insecure channel for local development
         with grpc.insecure_channel(envs.ORCASERVER) as channel:
-            stub = service_pb2_grpc.OrcaCoreStub(channel)
+            stub = service_pb2_grpc.OrcaCore(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
 
@@ -656,13 +656,13 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             with grpc.secure_channel(
                 envs.ORCASERVER, grpc.ssl_channel_credentials()
             ) as channel:
-                stub = service_pb2_grpc.OrcaCoreStub(channel)
+                stub = service_pb2_grpc.OrcaCore(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
         else:
             # insecure channel for local development
             with grpc.insecure_channel(envs.ORCASERVER) as channel:
-                stub = service_pb2_grpc.OrcaCoreStub(channel)
+                stub = service_pb2_grpc.OrcaCore(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
 
