@@ -4,7 +4,7 @@ from typing import Tuple
 from orca_python.exceptions import MissingDependency
 
 
-def getenvs() -> Tuple[str, ...]:
+def getenvs() -> Tuple[bool, str, str, str]:
     orcaserver = os.getenv("ORCA_CORE", "")
     if orcaserver == "":
         raise MissingDependency("ORCA_CORE is required")
@@ -18,7 +18,13 @@ def getenvs() -> Tuple[str, ...]:
     if host == "":
         raise MissingDependency("PROCESSOR_ADDRESS is required")
 
-    return orcaserver, port, host
+    env = os.getenv("ENV", "")
+    if env == "production":
+        is_production = True
+    else:
+        is_production = False
+
+    return is_production, orcaserver, port, host
 
 
-ORCASERVER, PORT, HOST = getenvs()
+is_production, ORCASERVER, PORT, HOST = getenvs()

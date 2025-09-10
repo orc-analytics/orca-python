@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.7] - 10-09-2025
+
+### Changed
+
+- The version of Orca core to use.
+
+## [v0.7.6] - 10-09-2025
+
+### Fixed
+
+- Fixed gRPC connection to ORCA CORE as SSL instead of insecure, when in production
+
 ## [v0.7.5] - 09-09-2025
 
 ### Fixed
@@ -94,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.5...HEAD
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.6...HEAD
+[v0.7.6]: https://github.com/Predixus/Orca/compare/v0.7.5...v0.7.6
 [v0.7.5]: https://github.com/Predixus/Orca/compare/v0.7.4...v0.7.5
 [v0.7.4]: https://github.com/Predixus/Orca/compare/v0.7.3...v0.7.4
 [v0.7.3]: https://github.com/Predixus/Orca/compare/v0.7.2...v0.7.3
