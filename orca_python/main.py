@@ -209,10 +209,20 @@ def EmitWindow(window: Window) -> None:
     json_format.ParseDict(window.metadata, struct_value)
     window_pb.metadata = struct_value
 
-    with grpc.insecure_channel(envs.ORCASERVER) as channel:
-        stub = service_pb2_grpc.OrcaCoreStub(channel)
-        response = stub.EmitWindow(window_pb)
-        LOGGER.info(f"Window emitted: {response}")
+    if envs.is_production:
+        # secure channel with TLS
+        with grpc.secure_channel(
+            envs.ORCASERVER, grpc.ssl_channel_credentials()
+        ) as channel:
+            stub = service_pb2_grpc.OrcaCoreStub(channel)
+            response = stub.EmitWindow(window_pb)
+            LOGGER.info(f"Window emitted: {response}")
+    else:
+        # insecure channel for local development
+        with grpc.insecure_channel(envs.ORCASERVER) as channel:
+            stub = service_pb2_grpc.OrcaCoreStub(channel)
+            response = stub.EmitWindow(window_pb)
+            LOGGER.info(f"Window emitted: {response}")
 
 
 @dataclass
@@ -641,10 +651,20 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     dep_msg.processor_name = dep.processor
                     dep_msg.processor_runtime = dep.runtime
 
-        with grpc.insecure_channel(envs.ORCASERVER) as channel:
-            stub = service_pb2_grpc.OrcaCoreStub(channel)
-            response = stub.RegisterProcessor(registration_request)
-            LOGGER.info(f"Algorithm registration response recieved: {response}")
+        if envs.is_production:
+            # secure channel with TLS
+            with grpc.secure_channel(
+                envs.ORCASERVER, grpc.ssl_channel_credentials()
+            ) as channel:
+                stub = service_pb2_grpc.OrcaCoreStub(channel)
+                response = stub.RegisterProcessor(registration_request)
+                LOGGER.info(f"Algorithm registration response received: {response}")
+        else:
+            # insecure channel for local development
+            with grpc.insecure_channel(envs.ORCASERVER) as channel:
+                stub = service_pb2_grpc.OrcaCoreStub(channel)
+                response = stub.RegisterProcessor(registration_request)
+                LOGGER.info(f"Algorithm registration response received: {response}")
 
     def Start(self) -> None:
         """
