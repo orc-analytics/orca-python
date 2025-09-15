@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.14] - 15-09-2025
+
 ## [v0.7.12] - 15-09-2025
 
 ### Added
@@ -124,10 +126,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.11...HEAD
-[v0.7.8]: https://github.com/Predixus/Orca/compare/v0.7.10...v0.7.11
-[v0.7.8]: https://github.com/Predixus/Orca/compare/v0.7.9...v0.7.10
-[v0.7.8]: https://github.com/Predixus/Orca/compare/v0.7.8...v0.7.9
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.7.14...HEAD
+[v0.7.14]: https://github.com/Predixus/Orca/compare/v0.7.13...v0.7.14
+[v0.7.13]: https://github.com/Predixus/Orca/compare/v0.7.12...v0.7.13
+[v0.7.12]: https://github.com/Predixus/Orca/compare/v0.7.11...v0.7.12
+[v0.7.11]: https://github.com/Predixus/Orca/compare/v0.7.10...v0.7.11
+[v0.7.10]: https://github.com/Predixus/Orca/compare/v0.7.9...v0.7.10
+[v0.7.9]: https://github.com/Predixus/Orca/compare/v0.7.8...v0.7.9
 [v0.7.8]: https://github.com/Predixus/Orca/compare/v0.7.7...v0.7.8
 [v0.7.7]: https://github.com/Predixus/Orca/compare/v0.7.6...v0.7.7
 [v0.7.6]: https://github.com/Predixus/Orca/compare/v0.7.5...v0.7.6

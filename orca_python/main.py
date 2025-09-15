@@ -369,9 +369,11 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         super().__init__()
         self._name = name
         self._processorConnStr = (
-            f"0.0.0.0:{envs.PORT}"  # attach the processor to all network interfaces.
+            f"[::]:{envs.PORT}"  # attach the processor to all network interfaces.
         )
-        self._orcaProcessorConnStr = f"{envs.HOST}:{envs.PORT}"  # tell orca-core to reference this processor by this address.
+        self._orcaProcessorConnStr = (
+            envs.HOST
+        )  # tell orca-core to reference this processor by this address.
         self._runtime = sys.version
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
@@ -709,6 +711,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             # start the server
             server.start()
+
             LOGGER.info("Server started successfully")
 
             # setup graceful shutdown
