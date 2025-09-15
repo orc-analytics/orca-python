@@ -695,7 +695,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             # Enable reflection for service discovery
             SERVICE_NAMES = (
-                service_pb2.DESCRIPTOR.services_by_name["OrcaProcessor"].full_name,
+                pb.DESCRIPTOR.services_by_name["OrcaProcessor"].full_name,
                 reflection.SERVICE_NAME,
             )
             reflection.enable_server_reflection(SERVICE_NAMES, server)
