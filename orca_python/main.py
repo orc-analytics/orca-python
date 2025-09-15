@@ -47,6 +47,7 @@ import service_pb2_grpc
 import google.protobuf.struct_pb2 as struct_pb2
 from google.protobuf import json_format
 from service_pb2_grpc import OrcaProcessorServicer
+from grpc_reflection.v1alpha import reflection
 
 from orca_python import envs
 from orca_python.exceptions import (
@@ -691,6 +692,13 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             # add our servicer to the server
             service_pb2_grpc.add_OrcaProcessorServicer_to_server(self, server)
+
+            # Enable reflection for service discovery
+            SERVICE_NAMES = (
+                pb.DESCRIPTOR.services_by_name["OrcaProcessor"].full_name,
+                reflection.SERVICE_NAME,
+            )
+            reflection.enable_server_reflection(SERVICE_NAMES, server)
 
             # add the server port
             port = server.add_insecure_port(self._processorConnStr)

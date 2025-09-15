@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "orca-python"
-version = "0.7.11"
+version = "0.7.12"
 description = "Python SDK for the Predixus Orca product"
 authors = [
   "Frederick Mannings <contact@predixus.com>"
@@ -18,6 +18,8 @@ build-backend = "poetry.core.masonry.api"
 python = ">=3.10"
 grpcio-tools = "^1.71.0"
 grpcio = "^1.71.0"
+mypy = "^1.18.1"
+grpcio-reflection = "^1.74.0"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.34.0"
