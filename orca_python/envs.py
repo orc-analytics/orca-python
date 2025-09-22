@@ -27,4 +27,4 @@ def getenvs() -> Tuple[bool, str, str, str]:
     return is_production, orcaserver, port, host
 
 
-is_production, ORCASERVER, PORT, HOST = getenvs()
+is_production, ORCACORE, PORT, HOST = getenvs()

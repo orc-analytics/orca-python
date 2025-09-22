@@ -14,6 +14,10 @@ class InvalidWindowArgument(BaseOrcaException):
     """Raised when an argument to the Window class is not valid"""
 
 
+class InvalidMetadataFieldArgument(BaseOrcaException):
+    """Raised when an argument to a metadata field is not valid"""
+
+
 class InvalidDependency(BaseOrcaException):
     """Raised when a dependency is invalid"""
 

@@ -55,6 +55,7 @@ from orca_python.exceptions import (
     InvalidWindowArgument,
     InvalidAlgorithmArgument,
     InvalidAlgorithmReturnType,
+    InvalidMetadataFieldArgument,
 )
 
 # Regex patterns for validation
@@ -66,23 +67,48 @@ WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class MetadataField:
+    name: str
+    description: str
+
+    def __post_init__(self) -> None:
+        if self.name == "":
+            raise InvalidMetadataFieldArgument("Metadata field name cannot be empty")
+
+        if self.description == "":
+            raise InvalidMetadataFieldArgument(
+                "Metadata field description cannot be empty"
+            )
+
+
 @dataclass
 class WindowType:
     name: str
     version: str
     description: str
+    metadataFields: List[MetadataField] = field(default_factory=list)
 
-    def __post__init__(self) -> None:
+    def __post_init__(self) -> None:
         if not re.match(WINDOW_NAME, self.name):
-            raise InvalidAlgorithmArgument(
+            raise InvalidWindowArgument(
                 f"Window name '{self.name}' must be in PascalCase"
             )
 
         if not re.match(SEMVER_PATTERN, self.version):
-            raise InvalidAlgorithmArgument(
+            raise InvalidWindowArgument(
                 f"Window version '{self.version}' must follow basic semantic "
                 "versioning (e.g., '1.0.0') without release portions"
             )
+
+        _seenFields = set()
+        for field in self.metadataFields:
+            if field in _seenFields:
+                raise InvalidWindowArgument(
+                    f"Two or more metadata fields provided with the same name:'{field.name}' and description@ '{field.description}"
+                )
+            else:
+                _seenFields.add(field)
 
 
 @dataclass
@@ -213,14 +239,14 @@ def EmitWindow(window: Window) -> None:
     if envs.is_production:
         # secure channel with TLS
         with grpc.secure_channel(
-            envs.ORCASERVER, grpc.ssl_channel_credentials()
+            envs.ORCACORE, grpc.ssl_channel_credentials()
         ) as channel:
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
     else:
         # insecure channel for local development
-        with grpc.insecure_channel(envs.ORCASERVER) as channel:
+        with grpc.insecure_channel(envs.ORCACORE) as channel:
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
@@ -657,14 +683,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         if envs.is_production:
             # secure channel with TLS
             with grpc.secure_channel(
-                envs.ORCASERVER, grpc.ssl_channel_credentials()
+                envs.ORCACORE, grpc.ssl_channel_credentials()
             ) as channel:
                 stub = service_pb2_grpc.OrcaCoreStub(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
         else:
             # insecure channel for local development
-            with grpc.insecure_channel(envs.ORCASERVER) as channel:
+            with grpc.insecure_channel(envs.ORCACORE) as channel:
                 stub = service_pb2_grpc.OrcaCoreStub(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")

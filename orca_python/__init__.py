@@ -7,6 +7,7 @@ from orca_python.main import (
     ArrayResult,
     ValueResult,
     StructResult,
+    MetadataField,
     ExecutionParams,
 )
 
@@ -14,6 +15,7 @@ __all__ = [
     "Processor",
     "EmitWindow",
     "Window",
+    "MetadataField",
     "WindowType",
     "StructResult",
     "ValueResult",
