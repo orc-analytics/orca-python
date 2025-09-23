@@ -1,6 +1,12 @@
 import time
 
-from orca_python import Processor, WindowType, StructResult, ExecutionParams
+from orca_python import (
+    Processor,
+    WindowType,
+    StructResult,
+    MetadataField,
+    ExecutionParams,
+)
 
 proc = Processor("ml")
 
@@ -17,8 +23,9 @@ Every30Second = WindowType(
 
 @proc.algorithm("MyAlgo", "1.0.0", Every30Second)
 def my_algorithm(params: ExecutionParams) -> StructResult:
-    trip_id = params.window.metadata.trip_id
-    bus_id = params.window.metadata.bus_id
+    trip_id = params.window.metadata.get("trip_id", None)
+    bus_id = params.window.metadata.get("bus_id", None)
+    print(trip_id, bus_id)
 
     time.sleep(5)
     return StructResult({"result": 42})
