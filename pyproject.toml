@@ -58,6 +58,11 @@ markers = [
   "live: marks tests as requireing access to live services"
 ]
 
+[tool.poe.env]
+ORCA_CORE="<dummy_grpc_url>"
+PROCESSOR_PORT="5051"
+PROCESSOR_ADDRESS="[::]"
+
 [tool.poe.tasks]
 _lint_check = "ruff check orca_python tests examples"
 _lint_fix = "ruff check orca_python tests examples --fix "

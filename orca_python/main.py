@@ -55,6 +55,7 @@ from orca_python.exceptions import (
     InvalidWindowArgument,
     InvalidAlgorithmArgument,
     InvalidAlgorithmReturnType,
+    InvalidMetadataFieldArgument,
 )
 
 # Regex patterns for validation
@@ -66,23 +67,48 @@ WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class MetadataField:
+    name: str
+    description: str
+
+    def __post_init__(self) -> None:
+        if self.name == "":
+            raise InvalidMetadataFieldArgument("Metadata field name cannot be empty")
+
+        if self.description == "":
+            raise InvalidMetadataFieldArgument(
+                "Metadata field description cannot be empty"
+            )
+
+
 @dataclass
 class WindowType:
     name: str
     version: str
     description: str
+    metadataFields: List[MetadataField] = field(default_factory=list)
 
-    def __post__init__(self) -> None:
+    def __post_init__(self) -> None:
         if not re.match(WINDOW_NAME, self.name):
-            raise InvalidAlgorithmArgument(
+            raise InvalidWindowArgument(
                 f"Window name '{self.name}' must be in PascalCase"
             )
 
         if not re.match(SEMVER_PATTERN, self.version):
-            raise InvalidAlgorithmArgument(
+            raise InvalidWindowArgument(
                 f"Window version '{self.version}' must follow basic semantic "
                 "versioning (e.g., '1.0.0') without release portions"
             )
+
+        _seenFields = set()
+        for field in self.metadataFields:
+            if field in _seenFields:
+                raise InvalidWindowArgument(
+                    f"Two or more metadata fields provided with the same name:'{field.name}' and description@ '{field.description}"
+                )
+            else:
+                _seenFields.add(field)
 
 
 @dataclass
@@ -213,14 +239,14 @@ def EmitWindow(window: Window) -> None:
     if envs.is_production:
         # secure channel with TLS
         with grpc.secure_channel(
-            envs.ORCASERVER, grpc.ssl_channel_credentials()
+            envs.ORCACORE, grpc.ssl_channel_credentials()
         ) as channel:
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
     else:
         # insecure channel for local development
-        with grpc.insecure_channel(envs.ORCASERVER) as channel:
+        with grpc.insecure_channel(envs.ORCACORE) as channel:
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
@@ -234,8 +260,7 @@ class Algorithm:
     Attributes:
         name (str): The name of the algorithm (PascalCase).
         version (str): Semantic version of the algorithm (e.g., "1.0.0").
-        window_name (str): The window type name that triggers the algorithm.
-        window_version (str): The version of the window type.
+        window_type (WindowType): The window type triggers the algorithm.
         exec_fn (AlgorithmFn): The execution function for the algorithm.
         processor (str): Name of the processor where it's registered.
         runtime (str): Python runtime used for execution.
@@ -243,9 +268,7 @@ class Algorithm:
 
     name: str
     version: str
-    window_name: str
-    window_version: str
-    window_description: str
+    window_type: WindowType
     exec_fn: AlgorithmFn
     processor: str
     runtime: str
@@ -259,7 +282,7 @@ class Algorithm:
     @property
     def full_window_name(self) -> str:
         """Returns the full window name as `window_name_window_version`."""
-        return f"{self.window_name}_{self.window_version}"
+        return f"{self.window_type.name}_{self.window_type.version}"
 
 
 class Algorithms:
@@ -293,7 +316,7 @@ class Algorithms:
             LOGGER.error(f"Attempted to register duplicate algorithm: {name}")
             raise ValueError(f"Algorithm {name} already exists")
         LOGGER.info(
-            f"Registering algorithm: {name} (window: {algorithm.window_name}_{algorithm.window_version})"
+            f"Registering algorithm: {name} (window: {algorithm.window_type.name}_{algorithm.window_type.version})"
         )
         self._algorithms[name] = algorithm
 
@@ -641,9 +664,16 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algo_msg.result_type = result_type_pb
 
             # Add window type
-            algo_msg.window_type.name = algorithm.window_name
-            algo_msg.window_type.version = algorithm.window_version
-            algo_msg.window_type.description = algorithm.window_description
+            algo_msg.window_type.name = algorithm.window_type.name
+            algo_msg.window_type.version = algorithm.window_type.version
+            algo_msg.window_type.description = algorithm.window_type.description
+
+            # Fill in metadata fields if present
+            if len(algorithm.window_type.metadataFields) > 0:
+                for metadataField in algorithm.window_type.metadataFields:
+                    metadata_fields_msg = algo_msg.window_type.metadataFields.add()
+                    metadata_fields_msg.name = metadataField.name
+                    metadata_fields_msg.description = metadataField.description
 
             # Add dependencies if they exist
             if algorithm.full_name in self._algorithmsSingleton._dependencies:
@@ -657,14 +687,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         if envs.is_production:
             # secure channel with TLS
             with grpc.secure_channel(
-                envs.ORCASERVER, grpc.ssl_channel_credentials()
+                envs.ORCACORE, grpc.ssl_channel_credentials()
             ) as channel:
                 stub = service_pb2_grpc.OrcaCoreStub(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
         else:
             # insecure channel for local development
-            with grpc.insecure_channel(envs.ORCASERVER) as channel:
+            with grpc.insecure_channel(envs.ORCACORE) as channel:
                 stub = service_pb2_grpc.OrcaCoreStub(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
@@ -804,9 +834,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algorithm = Algorithm(
                 name=name,
                 version=version,
-                window_name=window_type.name,
-                window_version=window_type.version,
-                window_description=window_type.description,
+                window_type=window_type,
                 exec_fn=wrapper,
                 processor=self._name,
                 runtime=sys.version,
