@@ -33,7 +33,7 @@ def _parse_connection_string(connection_string: str) -> Optional[Tuple[str, int]
     return (address, port)
 
 
-def getenvs() -> Tuple[bool, str, str, str]:
+def getenvs() -> Tuple[bool, str, str, int]:
     orca_core = os.getenv("ORCA_CORE", "")
     if orca_core == "":
         raise MissingEnvVar("ORCA_CORE is required")

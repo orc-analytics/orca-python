@@ -2,7 +2,7 @@ import time
 import datetime as dt
 
 import schedule
-from processor import bus_id, trip_id
+from processor import bus_id, route_id
 
 from orca_python import Window, EmitWindow
 
@@ -15,7 +15,7 @@ def emitWindow() -> None:
         name="Every30Second",
         version="1.0.0",
         origin="Example",
-        metadata={bus_id.name: 1, trip_id.name: 2},
+        metadata={bus_id.name: 1, route_id.name: 2},
     )
     EmitWindow(window)
 

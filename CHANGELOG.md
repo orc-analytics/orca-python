@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Changed
+
+- How the processor address is provided, with a robust regex handling of the address
+
+## [v0.8.0] - 23-09-2025
+
 ### Added
 
 - Integrated support for more robust metadata handling
