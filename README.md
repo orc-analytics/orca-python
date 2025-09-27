@@ -1,7 +1,7 @@
 # 🐳 Orca Python SDK
 
 The Orca Python SDK enables developers to define and register Python-based algorithms into the
-[Orca](https://www.github.com/Predixus/orca) framework.
+[Orca](https://www.github.com/orc-analytics/orca) framework.
 
 Orca exists to make it seamless to build scalable, production-grade ML or analytics pipelines on
 timeseries data.
@@ -16,7 +16,7 @@ Before using this SDK, you should install the Orca CLI and start Orca Core.
 **Linux / macOS**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Predixus/orca/main/install-cli.sh | bash
+curl -fsSL https://raw.githubusercontent.com/orc-analytics/orca/main/install-cli.sh | bash
 ```
 
 **Windows**
@@ -40,7 +40,7 @@ orca status
 4. Install the Orca sdk into your python project:
 
 ```bash
-pip install orca-time
+pip install orca-python
 ```
 
 5. Start building out your algorithms
@@ -65,37 +65,30 @@ proc.Start()
 Then run your python file to register it with orca-core:
 
 ```bash
- ORCA_CORE=grpc://localhost:32770 PROCESSOR_ADDRESS=172.18.0.1 PROCESSOR_PORT=8080 python main.py
+ ORCA_CORE=grpc://localhost:32770 PROCESSOR_ADDRESS=172.18.0.1:8080 python main.py
 ```
 
-Replace the contents of `ORCA_CORE`, `PROCESSOR_ADDRESS` and `PROCESSOR_PORT` with the output of `orca status`.
+Replace the contents of `ORCA_CORE` and `PROCESSOR_ADDRESS` with the output of `orca status`.
 
 6. Emit a window to orcacore
-   TBD
 
 Check out more examples [here](./examples/).
 
+## Environment Variables
+
+Several environment variables are require to register an Orca Processor:
+
+- `ORCA_CORE` - the address to reach the Orca-core service
+- `PROCESSOR_ADDRESS` - the address needed by Orca-core to reach the processor, of format `<address>:<port>`
+- `PROCESSOR_EXTERNAL_PORT` - an optional alternative port that should be used by Orca-core to contact the processor. Useful in scenarios like deploying the processor behind a managed service.
+
 ## 🧱 Key Concepts
 
-Processor: A container for algorithms, exposing them to the Orca Core service.
-
-Algorithm: A Python function decorated and registered for DAG execution.
-
-Window: A temporal trigger used to activate algorithms.
-
-## ⚠️ Naming Rules
-
-Algorithm and Window names must be in PascalCase.
-
-Versions must follow semantic versioning (e.g., 1.0.0).
-
-Dependencies must be declared only after their algorithm is registered.
-
-Algorithms cannot depend on others from a different window type (enforced by Orca Core).
+Checkout the Orca [docs](https://app.orc-a.io/docs) for info on how Orca works.
 
 ## 👥 Community
 
-GitHub Issues: https://github.com/predixus/orca-python/issues
+GitHub Issues: https://github.com/orc-analytics/orca-python/issues
 
 Discussions: Coming soon!
 
@@ -104,5 +97,3 @@ Discussions: Coming soon!
 This SDK is part of the Orca ecosystem, but licensed under the MIT License.
 
 See the full license terms (here)[./LICENSE].
-
-Built with ❤️ by Predixus

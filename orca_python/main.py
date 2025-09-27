@@ -392,7 +392,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         super().__init__()
         self._name = name
         self._processorConnStr = f"[::]:{envs.PROCESSOR_PORT}"  # attach the processor to all network interfaces when launching the gRPC service.
-        self._orcaProcessorConnStr = f"{envs.PROCESSOR_HOST}:{envs.PROCESSOR_PORT}"  # tell orca-core to reference this processor by this address.
+        self._orcaProcessorConnStr = f"{envs.PROCESSOR_HOST}:{envs.PROCESSOR_EXTERNAL_PORT}"  # tell orca-core to reference this processor by this address.
         self._runtime = sys.version
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
