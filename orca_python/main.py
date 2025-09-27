@@ -239,14 +239,14 @@ def EmitWindow(window: Window) -> None:
     if envs.is_production:
         # secure channel with TLS
         with grpc.secure_channel(
-            envs.ORCACORE, grpc.ssl_channel_credentials()
+            envs.ORCA_CORE, grpc.ssl_channel_credentials()
         ) as channel:
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
     else:
         # insecure channel for local development
-        with grpc.insecure_channel(envs.ORCACORE) as channel:
+        with grpc.insecure_channel(envs.ORCA_CORE) as channel:
             stub = service_pb2_grpc.OrcaCoreStub(channel)
             response = stub.EmitWindow(window_pb)
             LOGGER.info(f"Window emitted: {response}")
@@ -391,12 +391,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
     def __init__(self, name: str, max_workers: int = 10):
         super().__init__()
         self._name = name
-        self._processorConnStr = (
-            f"[::]:{envs.PORT}"  # attach the processor to all network interfaces.
-        )
-        self._orcaProcessorConnStr = (
-            envs.HOST
-        )  # tell orca-core to reference this processor by this address.
+        self._processorConnStr = f"[::]:{envs.PROCESSOR_PORT}"  # attach the processor to all network interfaces when launching the gRPC service.
+        self._orcaProcessorConnStr = f"{envs.PROCESSOR_HOST}:{envs.PROCESSOR_PORT}"  # tell orca-core to reference this processor by this address.
         self._runtime = sys.version
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
@@ -687,14 +683,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         if envs.is_production:
             # secure channel with TLS
             with grpc.secure_channel(
-                envs.ORCACORE, grpc.ssl_channel_credentials()
+                envs.ORCA_CORE, grpc.ssl_channel_credentials()
             ) as channel:
                 stub = service_pb2_grpc.OrcaCoreStub(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
         else:
             # insecure channel for local development
-            with grpc.insecure_channel(envs.ORCACORE) as channel:
+            with grpc.insecure_channel(envs.ORCA_CORE) as channel:
                 stub = service_pb2_grpc.OrcaCoreStub(channel)
                 response = stub.RegisterProcessor(registration_request)
                 LOGGER.info(f"Algorithm registration response received: {response}")
@@ -735,7 +731,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             # add the server port
             port = server.add_insecure_port(self._processorConnStr)
             if port == 0:
-                raise RuntimeError(f"Failed to bind to port {envs.PORT}")
+                raise RuntimeError(f"Failed to bind to port {envs.PROCESSOR_PORT}")
 
             LOGGER.info(f"Server listening on address {self._processorConnStr}")
 

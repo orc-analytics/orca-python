@@ -61,7 +61,7 @@ markers = [
 [tool.poe.env]
 ORCA_CORE="<dummy_grpc_url>"
 PROCESSOR_PORT="5051"
-PROCESSOR_ADDRESS="[::]"
+PROCESSOR_ADDRESS="[::]:8080"
 
 [tool.poe.tasks]
 _lint_check = "ruff check orca_python tests examples"
