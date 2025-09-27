@@ -33,7 +33,7 @@ def _parse_connection_string(connection_string: str) -> Optional[Tuple[str, int]
     return (address, port)
 
 
-def getenvs() -> Tuple[bool, str, str, int]:
+def getenvs() -> Tuple[bool, str, str, int, int]:
     orca_core = os.getenv("ORCA_CORE", "")
     if orca_core == "":
         raise MissingEnvVar("ORCA_CORE is required")
@@ -50,13 +50,29 @@ def getenvs() -> Tuple[bool, str, str, int]:
         )
     processor_address, processor_port = res
 
+    _processor_external_port = os.getenv("PROCESSOR_EXTERNAL_PORT", "")
+    if _processor_external_port != "":
+        if not _processor_external_port.isdigit():
+            raise BadEnvVar("PROCESSOR_EXTERNAL_PORT is not a valid number")
+        processor_external_port = int(_processor_external_port)
+    else:
+        processor_external_port = processor_port
+
     env = os.getenv("ENV", "")
     if env == "production":
         is_production = True
     else:
         is_production = False
 
-    return is_production, orca_core, processor_address, processor_port
+    return (
+        is_production,
+        orca_core,
+        processor_address,
+        processor_port,
+        processor_external_port,
+    )
 
 
-is_production, ORCA_CORE, PROCESSOR_HOST, PROCESSOR_PORT = getenvs()
+is_production, ORCA_CORE, PROCESSOR_HOST, PROCESSOR_PORT, PROCESSOR_EXTERNAL_PORT = (
+    getenvs()
+)
