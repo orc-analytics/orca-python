@@ -22,5 +22,9 @@ class InvalidDependency(BaseOrcaException):
     """Raised when a dependency is invalid"""
 
 
-class MissingDependency(BaseOrcaException):
-    """Raised when a dependency is missing"""
+class MissingEnvVar(BaseOrcaException):
+    """Raised when an environment variable is missing"""
+
+
+class BadEnvVar(BaseOrcaException):
+    """Raised when an environment variable is poorly defined"""

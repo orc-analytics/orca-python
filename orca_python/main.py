@@ -391,12 +391,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
     def __init__(self, name: str, max_workers: int = 10):
         super().__init__()
         self._name = name
-        self._processorConnStr = (
-            f"[::]:{envs.PORT}"  # attach the processor to all network interfaces.
-        )
-        self._orcaProcessorConnStr = (
-            envs.HOST
-        )  # tell orca-core to reference this processor by this address.
+        self._processorConnStr = f"[::]:{envs.PROCESSOR_PORT}"  # attach the processor to all network interfaces when launching the gRPC service.
+        self._orcaProcessorConnStr = f"{envs.PROCESSOR_HOST}:{envs.PROCESSOR_PORT}"  # tell orca-core to reference this processor by this address.
         self._runtime = sys.version
         self._max_workers = max_workers
         self._algorithmsSingleton: Algorithms = Algorithms()
@@ -735,7 +731,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             # add the server port
             port = server.add_insecure_port(self._processorConnStr)
             if port == 0:
-                raise RuntimeError(f"Failed to bind to port {envs.PORT}")
+                raise RuntimeError(f"Failed to bind to port {envs.PROCESSOR_PORT}")
 
             LOGGER.info(f"Server listening on address {self._processorConnStr}")
 
