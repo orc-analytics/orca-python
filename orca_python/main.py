@@ -679,21 +679,29 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     dep_msg.version = dep.version
                     dep_msg.processor_name = dep.processor
                     dep_msg.processor_runtime = dep.runtime
-
-        if envs.is_production:
-            # secure channel with TLS
-            with grpc.secure_channel(
-                envs.ORCA_CORE, grpc.ssl_channel_credentials()
-            ) as channel:
-                stub = service_pb2_grpc.OrcaCoreStub(channel)
-                response = stub.RegisterProcessor(registration_request)
-                LOGGER.info(f"Algorithm registration response received: {response}")
-        else:
-            # insecure channel for local development
-            with grpc.insecure_channel(envs.ORCA_CORE) as channel:
-                stub = service_pb2_grpc.OrcaCoreStub(channel)
-                response = stub.RegisterProcessor(registration_request)
-                LOGGER.info(f"Algorithm registration response received: {response}")
+        try:
+            if envs.is_production:
+                # secure channel with TLS
+                with grpc.secure_channel(
+                    envs.ORCA_CORE, grpc.ssl_channel_credentials()
+                ) as channel:
+                    stub = service_pb2_grpc.OrcaCoreStub(channel)
+                    response = stub.RegisterProcessor(registration_request)
+                    LOGGER.info(f"Algorithm registration response received: {response}")
+            else:
+                # insecure channel for local development
+                with grpc.insecure_channel(envs.ORCA_CORE) as channel:
+                    stub = service_pb2_grpc.OrcaCoreStub(channel)
+                    response = stub.RegisterProcessor(registration_request)
+                    LOGGER.info(f"Algorithm registration response received: {response}")
+        except grpc._channel._InactiveRpcError as e:
+            print()
+            print(e.details())
+            sys.exit(1)
+        except Exception as e:
+            print()
+            print(e)
+            sys.exit(1)
 
     def Start(self) -> None:
         """
