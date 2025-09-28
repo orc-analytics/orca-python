@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [v0.10.0] - 27-09-2025
+- Bumped Orca version
+
 ## [v0.9.0] - 27-09-2025
 
 ### Changed
@@ -143,7 +146,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[unreleased]: https://github.com/Predixus/Orca/compare/v0.9.0...HEAD
+[unreleased]: https://github.com/Predixus/Orca/compare/v0.10.0...HEAD
+[v0.10.0]: https://github.com/Predixus/Orca/compare/v0.9.0...v0.10.0
 [v0.9.0]: https://github.com/Predixus/Orca/compare/v0.8.0...v0.9.0
 [v0.8.0]: https://github.com/Predixus/Orca/compare/v0.7.14...v0.8.0
 [v0.7.14]: https://github.com/Predixus/Orca/compare/v0.7.13...v0.7.14
