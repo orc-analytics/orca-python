@@ -1,0 +1,160 @@
+{
+    "processors": [
+        {
+            "name": "ml",
+            "runtime": "py3.*",
+            "supported_algorithms": [
+                {
+                    "name": "SummaryStat",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.1.1",
+                        "description": "Triggered daily",
+                        "metadataFields": [
+                            {
+                                "name": "asset_id",
+                                "description": "The asset identified"
+                            }
+                        ]
+                    },
+                    "result_type": 2,
+                    "description": "Produces a collection of summary statistics"
+                },
+                {
+                    "name": "ShaftFreqEstimator",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 1,
+                    "description": "Estimates the shaft frequency"
+                },
+                {
+                    "name": "MeanSignalDetector",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 2,
+                    "description": "Calculates the mean signal"
+                },
+                {
+                    "name": "ResonanceDetector",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 1,
+                    "description": "Detects if there is excess resonance"
+                },
+                {
+                    "name": "BehaviourDeviationDetector",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 1,
+                    "description": "Detects deviation in the behaviour of the asset"
+                },
+                {
+                    "name": "SuperDuperMagicMachine",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 2,
+                    "description": "Does something amazing"
+                }
+            ]
+        },
+        {
+            "name": "mlv2",
+            "runtime": "py3.*",
+            "supported_algorithms": [
+                {
+                    "name": "SummaryStat",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.1.1",
+                        "description": "Triggered daily",
+                        "metadataFields": [
+                            {
+                                "name": "asset_id",
+                                "description": "The asset identified"
+                            }
+                        ]
+                    },
+                    "result_type": 2,
+                    "description": "Produces a collection of summary statistics"
+                },
+                {
+                    "name": "ShaftFreqEstimator",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 1,
+                    "description": "Estimates the shaft frequency"
+                },
+                {
+                    "name": "MeanSignalDetector",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 2,
+                    "description": "Calculates the mean signal"
+                },
+                {
+                    "name": "ResonanceDetector",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 1,
+                    "description": "Detects if there is excess resonance"
+                },
+                {
+                    "name": "BehaviourDeviationDetector",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 1,
+                    "description": "Detects deviation in the behaviour of the asset"
+                },
+                {
+                    "name": "SuperDuperMagicMachine",
+                    "version": "1.0.0",
+                    "window_type": {
+                        "name": "daily",
+                        "version": "1.0.0",
+                        "description": "Triggered daily"
+                    },
+                    "result_type": 2,
+                    "description": "Does something amazing"
+                }
+            ]
+        }
+    ]
+}

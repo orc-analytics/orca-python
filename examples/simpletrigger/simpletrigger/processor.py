@@ -7,6 +7,7 @@ from orca_python import (
     MetadataField,
     ExecutionParams,
 )
+from orca_python.main import ValueResult
 
 proc = Processor("ml")
 
@@ -22,7 +23,11 @@ Every30Second = WindowType(
 )
 
 
-@proc.algorithm("MyAlgo", "1.0.0", Every30Second)
+@proc.algorithm(
+    "MyAlgo",
+    "1.0.0",
+    Every30Second,
+)
 def my_algorithm(params: ExecutionParams) -> StructResult:
     route_id = params.window.metadata.get("route_id", None)
     bus_id = params.window.metadata.get("bus_id", None)
@@ -30,6 +35,14 @@ def my_algorithm(params: ExecutionParams) -> StructResult:
 
     time.sleep(5)
     return StructResult({"result": 42})
+
+
+@proc.algorithm(
+    "SecondAlgo",
+    "1.0.0",
+    Every30Second,
+)
+def second_algorithm(params: ExecutionParams) -> ValueResult: ...
 
 
 if __name__ == "__main__":
