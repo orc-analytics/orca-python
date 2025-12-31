@@ -6,6 +6,7 @@ to register, execute, and manage algorithms defined in Python. Algorithms can ha
 which are managed by Orca-core.
 """
 
+from io import StringIO
 import re
 import sys
 import asyncio
@@ -51,6 +52,7 @@ from grpc_reflection.v1alpha import reflection
 
 from orca_python import envs
 from orca_python.exceptions import (
+    BrokenRemoteAlgorithmStubs,
     InvalidDependency,
     InvalidWindowArgument,
     InvalidAlgorithmArgument,
@@ -205,6 +207,12 @@ class AlgorithmFn(Protocol):
         self, params: ExecutionParams, *args: Any, **kwargs: Any
     ) -> returnResult: ...
 
+@dataclass
+class RemoteAlgorithm():
+    ProcessorName: str
+    ProcessorRuntime: str
+    Name: str
+    Version: str
 
 T = TypeVar("T", bound=AlgorithmFn)
 
@@ -260,6 +268,7 @@ class Algorithm:
     Attributes:
         name (str): The name of the algorithm (PascalCase).
         version (str): Semantic version of the algorithm (e.g., "1.0.0").
+        description (str): A description of the algorithm.
         window_type (WindowType): The window type triggers the algorithm.
         exec_fn (AlgorithmFn): The execution function for the algorithm.
         processor (str): Name of the processor where it's registered.
@@ -268,6 +277,7 @@ class Algorithm:
 
     name: str
     version: str
+    description: str
     window_type: WindowType
     exec_fn: AlgorithmFn
     processor: str
@@ -299,6 +309,7 @@ class Algorithms:
         self._algorithms: Dict[str, Algorithm] = {}
         self._dependencies: Dict[str, List[Algorithm]] = {}
         self._dependencyFns: Dict[str, List[AlgorithmFn]] = {}
+        self._remoteDependencies: Dict[str, List[RemoteAlgorithm]] = {}
         self._window_triggers: Dict[str, List[Algorithm]] = {}
 
     def _add_algorithm(self, name: str, algorithm: Algorithm) -> None:
@@ -320,31 +331,49 @@ class Algorithms:
         )
         self._algorithms[name] = algorithm
 
-    def _add_dependency(self, algorithm: str, dependency: AlgorithmFn) -> None:
+    def _add_dependency(self, algorithm: str, dependency: AlgorithmFn, remote: bool = False) -> None:
         """
         Adds a dependency to an algorithm.
 
         Args:
             algorithm (str): Target algorithm's full name.
             dependency (AlgorithmFn): Dependency function already registered.
+            remote: Whether the dependency is a remote algorithm.
 
         Raises:
             ValueError: If the dependency function is not registered.
         """
         LOGGER.debug(f"Adding dependency for algorithm: {algorithm}")
+        if remote:
+            # TODO: how do we resolve this - we need information about a remote
+            # algorithm but do not have it. We don't want to go further than stubs as
+            # it makes deployment messy.
+            remoteDepMetadata = getattr(dependency, "__orca_metadata__", None)
+            if remoteDepMetadata is None:
+                raise BrokenRemoteAlgorithmStubs("Could not parse metadata from Orca stubs. Rerun stub generation: `orca sync`")
+            try:
+                remoteAlgo = RemoteAlgorithm(**remoteDepMetadata)
+            except Exception as e:
+                raise BrokenRemoteAlgorithmStubs(f"Could not parse metadata from Orca stubs: {e} Rerun stub generation: `orca sync`")
+
+            if algorithm not in self._remoteDependencies:
+                self._remoteDependencies[algorithm] = [remoteAlgo]
+            else:
+                self._remoteDependencies[algorithm].append(remoteAlgo)
+                
+            return
+
         dependencyAlgo = None
         for algo in self._algorithms.values():
             if algo.exec_fn == dependency:
                 dependencyAlgo = algo
                 break
-
         if not dependencyAlgo:
             dep_name = getattr(dependency, "__name__", "<unknown>")
             LOGGER.error(
                 f"Failed to find registered algorithm for dependency: {dep_name}"
             )
-            raise ValueError(f"Dependency {dep_name} not found in reg=ms")
-
+            raise ValueError(f"Dependency {dep_name} not found")
         if algorithm not in self._dependencyFns:
             self._dependencyFns[algorithm] = [dependency]
             self._dependencies[algorithm] = [dependencyAlgo]
@@ -641,6 +670,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algo_msg = registration_request.supported_algorithms.add()
             algo_msg.name = algorithm.name
             algo_msg.version = algorithm.version
+            algo_msg.description = algorithm.description
 
             # manage the return type of the algorithm
             if algorithm.result_type == ValueResult:  # type: ignore
@@ -679,6 +709,15 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     dep_msg.version = dep.version
                     dep_msg.processor_name = dep.processor
                     dep_msg.processor_runtime = dep.runtime
+            
+            # Add remote dependencies if they exist
+            if algorithm.full_name in self._algorithmsSingleton._remoteDependencies:
+                for dep in self._algorithmsSingleton._remoteDependencies[algorithm.full_name]:
+                    dep_msg = algo_msg.dependencies.add()
+                    dep_msg.name = dep.Name
+                    dep_msg.version = dep.Version
+                    dep_msg.processor_name = dep.ProcessorName
+                    dep_msg.processor_runtime = dep.ProcessorRuntime
         try:
             if envs.is_production:
                 # secure channel with TLS
@@ -772,6 +811,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         self,
         name: str,
         version: str,
+        description: str,
         window_type: WindowType,
         depends_on: List[Callable[..., Any]] = [],
     ) -> Callable[[T], T]:
@@ -800,7 +840,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 f"Version '{version}' must follow basic semantic "
                 "versioning (e.g., '1.0.0') without release portions"
             )
-
+            
         def inner(algo: T) -> T:
             def wrapper(
                 params: ExecutionParams,
@@ -838,6 +878,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algorithm = Algorithm(
                 name=name,
                 version=version,
+                description=description,
                 window_type=window_type,
                 exec_fn=wrapper,
                 processor=self._name,
@@ -851,14 +892,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             )
 
             for dependency in depends_on:
-                if not self._algorithmsSingleton._has_algorithm_fn(dependency):
+                if not getattr(dependency, "__orca_is_remote__", False) and not self._algorithmsSingleton._has_algorithm_fn(dependency):
                     message = (
                         f"Cannot add function `{dependency.__name__}` to dependency stack. All dependencies must "
                         "be decorated with `@algorithm` before they can be used as dependencies."
                     )
                     raise InvalidDependency(message)
                 self._algorithmsSingleton._add_dependency(
-                    algorithm.full_name, dependency
+                    algorithm.full_name, dependency, getattr(dependency, "__orca_is_remote__", False)
                 )
 
             # TODO: check for circular dependencies. It's not easy to create one in python as the function

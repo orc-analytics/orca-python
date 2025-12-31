@@ -118,13 +118,20 @@ def my_algorithm(params: ExecutionParams) -> StructResult:
     ...
 ```
 
-## Environment Variables
+## Configuration 
 
-Several environment variables are require to register an Orca Processor:
+Some configuration is required to register a process then start accepting processing requests. If using the internal orca stack for development (via `orca start`), then simply initialise the repository with an `orca.json` file:
+
+```bash
+orca init
+```
+
+You can additionally provide these environment variables to override, or set, certain configurations:
 
 - `ORCA_CORE` - the address to reach the Orca-core service
 - `PROCESSOR_ADDRESS` - the address needed by Orca-core to reach the processor, of format `<address>:<port>`
 - `PROCESSOR_EXTERNAL_PORT` - an optional alternative port that should be used by Orca-core to contact the processor. Useful in scenarios like deploying the processor behind a managed service.
+- `ENV` - when set to `production` the processor will serve using TLS
 
 ## 🧱 Key Concepts
 

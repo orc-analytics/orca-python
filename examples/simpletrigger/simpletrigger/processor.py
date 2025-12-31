@@ -7,6 +7,7 @@ from orca_python import (
     MetadataField,
     ExecutionParams,
 )
+from orca_python.registry.algorithms import shaft_freq_estimator_27649598
 
 proc = Processor("ml")
 
@@ -27,6 +28,7 @@ Every30Second = WindowType(
     "MyAlgo",
     "1.0.0",
     Every30Second,
+    depends_on=[shaft_freq_estimator_27649598]
 )
 def my_algorithm(params: ExecutionParams) -> StructResult:
     route_id = params.window.metadata.get("route_id", None)
