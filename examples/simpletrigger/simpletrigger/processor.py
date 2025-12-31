@@ -7,11 +7,11 @@ from orca_python import (
     MetadataField,
     ExecutionParams,
 )
-from orca_python.main import ValueResult
 
 proc = Processor("ml")
 
-# E.g. you have you have a fleet of busses, where every bus has a particular ID and runs a particular route
+# E.g. you have you have a fleet of busses, where every bus has a particular
+# ID and runs a particular route
 route_id = MetadataField(name="route_id", description="The unique ID of the route")
 bus_id = MetadataField(name="bus_id", description="The unique ID of the bus")
 
@@ -35,14 +35,6 @@ def my_algorithm(params: ExecutionParams) -> StructResult:
 
     time.sleep(5)
     return StructResult({"result": 42})
-
-
-@proc.algorithm(
-    "SecondAlgo",
-    "1.0.0",
-    Every30Second,
-)
-def second_algorithm(params: ExecutionParams) -> ValueResult: ...
 
 
 if __name__ == "__main__":

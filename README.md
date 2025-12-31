@@ -74,6 +74,50 @@ Replace the contents of `ORCA_CORE` and `PROCESSOR_ADDRESS` with the output of `
 
 Check out more examples [here](./examples/).
 
+7. Sync local registry of algorithms to Orca Core
+
+When building algorithms that depend on the result of algorithms in other proccessors it's neccessary to reference these algorithms as python objects in the `depends_on` argument of the `algorithm` decorator function.
+
+To do this, sync your python project with Orca Core:
+
+```bash
+orca sync
+```
+
+Run this command at the root level of your python project. This will generate a `.orca` folder that contains type stubs for the algorithms stored in other processors.
+
+Then, configure the settings of your language server and/or linter to include these type stubs. E.g. for pyright, you would include these settings in your `pyrightconfig.json` file at the root of your python project:
+```json
+{
+  "stubPath": ".orca",
+}
+```
+Now, when importing modules from `orca_python.registry.algorithms` you will see algorithms configured by remote processors.
+
+For example:
+```python
+from orca_python.registry.algorithms import <my_remote_algorithm>
+```
+
+This stubbed algorithm can be used as an algorithm in the `depends_on` argument of the `algorithm` decorator function.
+
+```python
+from orca_python import Processor
+from orca_python.registry.window_types import every_30_seconds
+from orca_python.registry.algorithms import my_remote_algorithm
+
+proc = Processor("ml")
+
+@proc.algorithm(
+    "MyAlgo",
+    "1.0.0",
+    every_30_seconds,
+    depends_on=[my_remote_algorithm]
+)
+def my_algorithm(params: ExecutionParams) -> StructResult:
+    ...
+```
+
 ## Environment Variables
 
 Several environment variables are require to register an Orca Processor:
@@ -84,7 +128,7 @@ Several environment variables are require to register an Orca Processor:
 
 ## 🧱 Key Concepts
 
-Checkout the Orca [docs](https://app.orc-a.io/docs) for info on how Orca works.
+Checkout the Orca [docs](https://orc-a.io/docs) for info on how Orca works.
 
 ## 👥 Community
 

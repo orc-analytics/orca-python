@@ -8,7 +8,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "orca-python (>=0.10.0,<0.11.0)"
+    "orca-python (>=0.10.0,<0.11.0)",
+    "schedule (>=1.2.2,<2.0.0)"
 ]
 
 
