@@ -38,7 +38,7 @@ def _load_stub_metadata(func_name: str) -> dict[str, Any]:
                 # look at previous lines for metadata comment
                 for i in range(func_line - 1, max(0, func_line - 5), -1):
                     line = lines[i].strip()
-                    if match := re.search(r"#\s*ALGO_METADATA:\s*(\{.*\})", line):
+                    if match := re.search(r"#\s*METADATA:\s*(\{.*\})", line):
                         result["metadata"] = json.loads(match.group(1))
                         break
 
@@ -66,6 +66,7 @@ def __getattr__(name):
             self.__orca_metadata__ = stub_info["metadata"]
 
         def __call__(self, *args, **kwargs):
+            _, _ = args, kwargs
             raise NotImplementedError(
                 f"{self.__name__} is only available as a remote algorithm. "
                 f"Metadata: {self.__orca_metadata__}"
