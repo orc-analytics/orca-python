@@ -47,7 +47,7 @@ class ConfigData:
     processorConnectionString: str
 
 
-def parseConfigFile() -> Tuple[bool, str, str, int, int]:
+def parseConfigFile() -> Tuple[bool, str, str, str, int, int]:
     currentDir = Path.cwd()
     configFile = currentDir / "orca.json"
     hasConfig = False
@@ -61,7 +61,7 @@ def parseConfigFile() -> Tuple[bool, str, str, int, int]:
             LOGGER.error(f"Could not parse config file: {e}")
             raise BadConfigFile(f"Could not parse config file: {e}")
     else:
-        return (False, "", "", 0, 0)
+        return (False, "", "", "", 0, 0)
 
     res = _parse_connection_string(configData.processorConnectionString)
     if res is None:
@@ -73,6 +73,7 @@ def parseConfigFile() -> Tuple[bool, str, str, int, int]:
     return (
         hasConfig,
         configData.orcaConnectionString,
+        configData.projectName,
         processor_address,
         processor_port,
         configData.processorPort,
@@ -126,9 +127,19 @@ def getenvs(strict: bool = False) -> Tuple[bool, str, str, int | None, int | Non
 
 # config file takes priority. Env vars can overwrite. And if config file not
 # present, all the env vars have to be there.
-hasConfig, ORCA_CORE, PROCESSOR_HOST, PROCESSOR_PORT, PROCESSOR_EXTERNAL_PORT = (
-    parseConfigFile()
-)
+(
+    hasConfig,
+    PROJECT_NAME,
+    ORCA_CORE,
+    PROCESSOR_HOST,
+    PROCESSOR_PORT,
+    PROCESSOR_EXTERNAL_PORT,
+) = parseConfigFile()
+
+if PROJECT_NAME == "":
+    LOGGER.warning(
+        "Project name could not be found in `orca.json` (or the config is not present). When generating stubs with `orca sync` this may cause algorithm definitions that are present in this repository to be duplicated locally.\nRun `orca init` to generate a `orca.json` config file to avoid this."
+    )
 if hasConfig:
     (
         is_production,
@@ -137,9 +148,9 @@ if hasConfig:
         _PROCESSOR_PORT,
         _PROCESSOR_EXTERNAL_PORT,
     ) = getenvs()
-    if _ORCA_CORE != '':
-        ORCA_CORE= ORCA_CORE
-    if _PROCESSOR_HOST != '':
+    if _ORCA_CORE != "":
+        ORCA_CORE = ORCA_CORE
+    if _PROCESSOR_HOST != "":
         PROCESSOR_HOST = _PROCESSOR_HOST
     if _PROCESSOR_PORT is not None:
         PROCESSOR_PORT = _PROCESSOR_PORT
