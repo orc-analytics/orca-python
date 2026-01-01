@@ -667,6 +667,9 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         registration_request.runtime = self._runtime
         registration_request.connection_str = self._orcaProcessorConnStr
 
+        if envs.PROJECT_NAME != "":
+            registration_request.project_name = envs.PROJECT_NAME
+
         for _, algorithm in self._algorithmsSingleton._algorithms.items():
             LOGGER.debug(
                 f"Adding algorithm to registration: {algorithm.name}_{algorithm.version}"

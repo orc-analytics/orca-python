@@ -72,8 +72,8 @@ def parseConfigFile() -> Tuple[bool, str, str, str, int, int]:
 
     return (
         hasConfig,
-        configData.orcaConnectionString,
         configData.projectName,
+        configData.orcaConnectionString,
         processor_address,
         processor_port,
         configData.processorPort,
