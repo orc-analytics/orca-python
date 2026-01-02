@@ -1,13 +1,32 @@
 import re
 import ast
 import json
-from typing import Any
 from pathlib import Path
 
+from orca_python.main import StubInfo
 from orca_python.exceptions import BrokenRemoteAlgorithmStubs
 
 
-def _load_stub_metadata(obj_name: str) -> dict[str, Any]:
+class StubMetadataField:
+    __orca_is_remote__ = True
+    name: str
+    description: str
+
+    def __init__(self, field_name: str, stub_info: StubInfo):
+        self.__name__ = field_name
+        self.__annotations__ = stub_info["annotations"]
+        self.__orca_metadata__ = stub_info["metadata"]
+        name = stub_info["metadata"].get("Name", None)
+        description = stub_info["metadata"].get("Description", None)
+        if name is None or description is None:
+            raise BrokenRemoteAlgorithmStubs(
+                "Stubs appear broken. Regenerate with `orca sync`."
+            )
+        self.name = name
+        self.description = description
+
+
+def _load_stub_metadata(obj_name: str) -> StubInfo:
     """Load annotations and metadata from the .pyi stub file."""
     stub_file = (
         Path.cwd() / ".orca" / "orca_python" / "registry" / "metadata_fields.pyi"
@@ -20,7 +39,7 @@ def _load_stub_metadata(obj_name: str) -> dict[str, Any]:
         content = stub_file.read_text()
         tree = ast.parse(content)
 
-        result = {"annotations": {}, "metadata": {}}
+        result: StubInfo = {"annotations": {}, "metadata": {}}
 
         # get the annotated assignment node (e.g., asset_id: MetadataField)
         for node in ast.walk(tree):
@@ -48,31 +67,13 @@ def _load_stub_metadata(obj_name: str) -> dict[str, Any]:
     except Exception as e:
         print(f"Error parsing stub: {e}")
 
-    return {"annotations": {}, "metadata": {}}
+    return StubInfo(annotations={}, metadata={})
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> StubMetadataField:
     if name.startswith("_"):
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
     stub_info = _load_stub_metadata(name)
 
-    class StubMetadataField:
-        __orca_is_remote__ = True
-        name: str
-        description: str
-
-        def __init__(self, field_name: str):
-            self.__name__ = field_name
-            self.__annotations__ = stub_info["annotations"]
-            self.__orca_metadata__ = stub_info["metadata"]
-            name = stub_info["metadata"].get("Name", None)
-            description = stub_info["metadata"].get("Description", None)
-            if name is None or description is None:
-                raise BrokenRemoteAlgorithmStubs(
-                    "Stubs appear broken. Regenerate with `orca sync`."
-                )
-            self.name = name
-            self.description = description
-
-    return StubMetadataField(name)
+    return StubMetadataField(name, stub_info)

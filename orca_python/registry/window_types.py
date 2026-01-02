@@ -1,25 +1,25 @@
 import re
 import ast
 import json
-from typing import Any, List
+from typing import List
 from pathlib import Path
 from dataclasses import dataclass
 
-from orca_python.main import BrokenRemoteAlgorithmStubs
+from orca_python.main import StubInfo, BrokenRemoteAlgorithmStubs
 
 
-def _load_stub_metadata(obj_name: str) -> dict[str, Any]:
+def _load_stub_metadata(obj_name: str) -> StubInfo:
     """Load annotations and metadata from the .pyi stub file."""
     stub_file = Path.cwd() / ".orca" / "orca_python" / "registry" / "window_types.pyi"
 
     if not stub_file.exists():
-        return {"annotations": {}, "metadata": {}}
+        return StubInfo(annotations={}, metadata={})
 
     try:
         content = stub_file.read_text()
         tree = ast.parse(content)
 
-        result = {"annotations": {}, "metadata": {}}
+        result: StubInfo = {"annotations": {}, "metadata": {}}
 
         # get the annotated assignment node
         for node in ast.walk(tree):
@@ -47,7 +47,7 @@ def _load_stub_metadata(obj_name: str) -> dict[str, Any]:
     except Exception as e:
         print(f"Error parsing stub: {e}")
 
-    return {"annotations": {}, "metadata": {}}
+    return StubInfo(annotations={}, metadata={})
 
 
 def __getattr__(name):

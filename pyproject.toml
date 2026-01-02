@@ -21,12 +21,12 @@ grpcio = "^1.71.0"
 grpcio-reflection = "^1.74.0"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.18.1"
 poethepoet = "^0.34.0"
 pytest = "^8.3.5"
 ruff = "^0.11.7"
 schedule = "^1.2.2"
 numpy = "^2.2.6"
+pyright = "^1.1.407"
 
 [tool.ruff]
 exclude = ["*_pb2.py", "*.pyi"]
@@ -44,14 +44,6 @@ extend-select = [
     ]
 select=["I"]
 
-[tool.mypy]
-python_version = "3.12"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "orca.protobufs.python.*"
-ignore_errors = true
-
 [tool.pytest.ini_options]
 markers = [
   "live: marks tests as requireing access to live services"
@@ -65,7 +57,7 @@ PROCESSOR_ADDRESS="[::]:8080"
 [tool.poe.tasks]
 _lint_check = "ruff check orca_python tests examples"
 _lint_fix = "ruff check orca_python tests examples --fix "
-_type = "mypy orca_python examples --strict --warn-unused-ignores --warn-redundant-casts "
+_type = "pyright orca_python examples"
 _format = "ruff format orca_python tests examples"
 
 format = ["_format", "_lint_fix"]
@@ -74,4 +66,4 @@ lint_ci = ["_lint_check", "_type"]
 
 # Testing
 test = "pytest tests -vv -m 'not live'"
-test_live ="pytest tests -vv -m 'live'" 
+test_live ="pytest tests -vv -m 'live'"

@@ -35,6 +35,7 @@ from typing import (
     Optional,
     Protocol,
     Generator,
+    TypedDict,
     AsyncGenerator,
 )
 from inspect import signature
@@ -66,6 +67,11 @@ WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class StubInfo(TypedDict):
+    annotations: Dict[str, Any]
+    metadata: Dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -196,8 +202,6 @@ class ExecutionParams:
                 origin=window.origin,
                 metadata=json_format.MessageToDict(window.metadata),
             )
-        else:
-            raise InvalidWindowArgument(f"window of type {type(window)} not handled")
         self.dependencies = dependencies
 
 
@@ -719,14 +723,14 @@ class Processor(OrcaProcessorServicer):  # type: ignore
 
             # Add remote dependencies if they exist
             if algorithm.full_name in self._algorithmsSingleton._remoteDependencies:
-                for dep in self._algorithmsSingleton._remoteDependencies[
+                for remote_dep in self._algorithmsSingleton._remoteDependencies[
                     algorithm.full_name
                 ]:
                     dep_msg = algo_msg.dependencies.add()
-                    dep_msg.name = dep.Name
-                    dep_msg.version = dep.Version
-                    dep_msg.processor_name = dep.ProcessorName
-                    dep_msg.processor_runtime = dep.ProcessorRuntime
+                    dep_msg.name = remote_dep.Name
+                    dep_msg.version = remote_dep.Version
+                    dep_msg.processor_name = remote_dep.ProcessorName
+                    dep_msg.processor_runtime = remote_dep.ProcessorRuntime
         try:
             if envs.is_production:
                 # secure channel with TLS
@@ -742,10 +746,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     stub = service_pb2_grpc.OrcaCoreStub(channel)
                     response = stub.RegisterProcessor(registration_request)
                     LOGGER.info(f"Algorithm registration response received: {response}")
-        except grpc._channel._InactiveRpcError as e:
-            print()
-            print(e.details())
-            sys.exit(1)
         except Exception as e:
             print()
             print(e)

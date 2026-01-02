@@ -161,6 +161,16 @@ else:
         is_production,
         ORCA_CORE,
         PROCESSOR_HOST,
-        PROCESSOR_PORT,
-        PROCESSOR_EXTERNAL_PORT,
+        _PROCESSOR_PORT,
+        _PROCESSOR_EXTERNAL_PORT,
     ) = getenvs(strict=True)
+
+    if _PROCESSOR_PORT is None:
+        MissingEnvVar("PROCESSOR_PORT required")
+    else:
+        PROCESSOR_PORT = _PROCESSOR_PORT
+
+    if _PROCESSOR_EXTERNAL_PORT is None:
+        MissingEnvVar("PROCESSOR_EXTERNAL_PORT required")
+    else:
+        PROCESSOR_EXTERNAL_PORT = _PROCESSOR_EXTERNAL_PORT

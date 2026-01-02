@@ -36,4 +36,3 @@ class BadConfigFile(BaseOrcaException):
 
 class BrokenRemoteAlgorithmStubs(BaseOrcaException):
     """Raised when remote algorithm stubs cannot be properly parsed and read"""
-

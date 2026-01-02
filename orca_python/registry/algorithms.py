@@ -1,22 +1,39 @@
 import re
 import ast
 import json
-from typing import Any
 from pathlib import Path
 
+from orca_python.main import StubInfo
 
-def _load_stub_metadata(func_name: str) -> dict[str, Any]:
+
+class StubAlgorithm:
+    __orca_is_remote__ = True
+
+    def __init__(self, func_name: str, stub_info: StubInfo):
+        self.__name__ = func_name
+        self.__annotations__ = stub_info["annotations"]
+        self.__orca_metadata__ = stub_info["metadata"]
+
+    def __call__(self, *args, **kwargs) -> None:
+        _, _ = args, kwargs
+        raise NotImplementedError(
+            f"{self.__name__} is only available as a remote algorithm. "
+            f"Metadata: {self.__orca_metadata__}"
+        )
+
+
+def _load_stub_metadata(func_name: str) -> StubInfo:
     """Load annotations and metadata from the .pyi stub file."""
     stub_file = Path.cwd() / ".orca" / "orca_python" / "registry" / "algorithms.pyi"
 
     if not stub_file.exists():
-        return {"annotations": {}, "metadata": {}}
+        return StubInfo(annotations={}, metadata={})
 
     try:
         content = stub_file.read_text()
         tree = ast.parse(content)
 
-        result = {"annotations": {}, "metadata": {}}
+        result: StubInfo = {"annotations": {}, "metadata": {}}
 
         # get the function node
         for node in ast.walk(tree):
@@ -48,28 +65,13 @@ def _load_stub_metadata(func_name: str) -> dict[str, Any]:
     except Exception as e:
         print(f"Error parsing stub: {e}")
 
-    return {"annotations": {}, "metadata": {}}
+    return StubInfo(annotations={}, metadata={})
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> StubAlgorithm:
     if name.startswith("_"):
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
     stub_info = _load_stub_metadata(name)
 
-    class StubAlgorithm:
-        __orca_is_remote__ = True
-
-        def __init__(self, func_name: str):
-            self.__name__ = func_name
-            self.__annotations__ = stub_info["annotations"]
-            self.__orca_metadata__ = stub_info["metadata"]
-
-        def __call__(self, *args, **kwargs):
-            _, _ = args, kwargs
-            raise NotImplementedError(
-                f"{self.__name__} is only available as a remote algorithm. "
-                f"Metadata: {self.__orca_metadata__}"
-            )
-
-    return StubAlgorithm(name)
+    return StubAlgorithm(name, stub_info)
