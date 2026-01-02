@@ -23,8 +23,9 @@ Every30Second = WindowType(
 )
 
 
-@proc.algorithm("MyAlgo", "1.0.0", "Simple algorithm", Every30Second)
+@proc.algorithm("MyAlgo", "1.0.0", Every30Second)
 def my_algorithm(params: ExecutionParams) -> StructResult:
+    """A simple algorithms that does nothing interesting"""
     route_id = params.window.metadata.get("route_id", None)
     bus_id = params.window.metadata.get("bus_id", None)
     print(route_id, bus_id)

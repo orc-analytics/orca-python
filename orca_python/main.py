@@ -828,8 +828,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         self,
         name: str,
         version: str,
-        description: str,
         window_type: WindowType,
+        description: Optional[str] = None,
         depends_on: List[Callable[..., Any]] = [],
     ) -> Callable[[T], T]:
         """
@@ -840,6 +840,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             version (str): Semantic version (e.g., "1.0.0").
             window_type (WindowType): Triggering window type
             depends_on (List[Callable]): List of dependent algorithm functions.
+            dscription: The description of the algorithm
         Returns:
             Callable[[T], T]: The decorated function.
 
@@ -891,11 +892,15 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 raise InvalidAlgorithmReturnType(
                     f"Algorithm has return type {sig.return_annotation}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`, `NoneResult`"
                 )
+            if description is None:
+                _description = "" if algo.__doc__ is None else algo.__doc__
+            else:
+                _description = description
 
             algorithm = Algorithm(
                 name=name,
                 version=version,
-                description=description,
+                description=_description,
                 window_type=window_type,
                 exec_fn=wrapper,
                 processor=self._name,
