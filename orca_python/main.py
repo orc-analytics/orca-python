@@ -495,18 +495,29 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 )
 
             elif algo.result_type == ValueResult:  # type: ignore
-                # for single numeric values
-                resultPb = pb.Result(
-                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                    single_value=algoResult.value,
-                )
+                if isinstance(algoResult.value, (float, int)):
+                    # for single numeric values
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                        single_value=algoResult.value,
+                    )
+                else:
+                    LOGGER.error(
+                        f"Algorithm {algo.name} {algo.version} produced result that was neither a float or an int {algo.result_type}. Failing algorithm."
+                    )
+                    # create a handled failure result
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_HANDLED_FAILED,
+                    )
+
             elif algo.result_type == ArrayResult:  # type: ignore
-                # for lists of numeric values
-                float_array = pb.FloatArray(values=algoResult)
-                resultPb = pb.Result(
-                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                    float_values=float_array.values,
-                )
+                if isinstance(algoResult, List):
+                    # for lists of numeric values
+                    float_array = pb.FloatArray(values=algoResult)
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                        float_values=float_array,
+                    )
             else:
                 LOGGER.error(
                     f"Algorithm {algo.name} {algo.version} has unhandled return type {algo.result_type}"
@@ -626,12 +637,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             context.set_details(f"DAG execution failed: {str(e)}")
             raise
 
-        except Exception as e:
-            LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"DAG execution failed: {str(e)}")
-            raise
-
     def HealthCheck(
         self, HealthCheckRequest: pb.HealthCheckRequest, context: grpc.ServicerContext
     ) -> pb.HealthCheckResponse:
@@ -645,6 +650,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         Returns:
             pb.HealthCheckResponse: Health status and optional metrics.
         """
+        _ = HealthCheckRequest
+        _ = context
 
         LOGGER.debug("Received health check request")
         return pb.HealthCheckResponse(
@@ -800,6 +807,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             import signal
 
             def handle_shutdown(signum: int, frame: Any) -> None:
+                _, _ = signum, frame
                 LOGGER.info("Received shutdown signal, stopping server...")
                 server.stop(grace=5)  # 5 seconds grace period
 
@@ -935,9 +943,9 @@ def is_type_in_union(target_type, union_type):  # type: ignore
             return target_type in union_type.__args__
 
         # handle typing.Union syntax
-        origin = getattr(typing, "get_origin", lambda x: None)(union_type)
+        origin = getattr(typing, "get_origin", lambda _: None)(union_type)
         if origin is Union:
-            args = getattr(typing, "get_args", lambda x: ())(union_type)
+            args = getattr(typing, "get_args", lambda _: ())(union_type)
             return target_type in args
 
         # handle single type (not a union)
