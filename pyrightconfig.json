@@ -1,0 +1,24 @@
+{
+  "include": [
+    "orca_python",
+    "examples"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "**/node_modules",
+    "**/*.pyi",
+    "**/*_pb2.py",
+    "orca/protobufs/python"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnusedImport": "none",
+  "reportUnusedVariable": "none",
+  "stubPath": ".orca",
+}

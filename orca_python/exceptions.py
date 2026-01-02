@@ -28,3 +28,11 @@ class MissingEnvVar(BaseOrcaException):
 
 class BadEnvVar(BaseOrcaException):
     """Raised when an environment variable is poorly defined"""
+
+
+class BadConfigFile(BaseOrcaException):
+    """Raised when the orca.json config file is poorly defined"""
+
+
+class BrokenRemoteAlgorithmStubs(BaseOrcaException):
+    """Raised when remote algorithm stubs cannot be properly parsed and read"""

@@ -1,4 +1,5 @@
 import random
+import datetime as dt
 
 import pytest
 import service_pb2 as pb
@@ -11,6 +12,7 @@ from orca_python import (
     ValueResult,
     ExecutionParams,
 )
+from orca_python.main import Window
 from orca_python.exceptions import InvalidDependency, InvalidAlgorithmArgument
 
 proc = Processor("ml")
@@ -19,17 +21,30 @@ proc = Processor("ml")
 def test_algorithm_arg_parsing_fails():
     """Arguments to the algorithm decorator are parsed as expected."""
     proc._algorithmsSingleton._flush()
-
     with pytest.raises(InvalidAlgorithmArgument):
 
-        @proc.algorithm("TestAlgorithm", "1.0.0+abcd", "WindowA", "1.0.0")
+        @proc.algorithm(
+            "TestAlgorithm",
+            "1.0.0+abcd",
+            WindowType(name="WindowA", version="1.0.0", description=""),
+            "1.0.0",
+        )
         def test_algorithm(params: ExecutionParams) -> NoneResult:
+            _ = params
             return NoneResult()
 
+        _ = test_algorithm
+
     with pytest.raises(InvalidAlgorithmArgument):
 
-        @proc.algorithm("Test_Algorithm", "1.0.0", "WindowA", "1.0.0")
+        @proc.algorithm(
+            "Test_Algorithm",
+            "1.0.0",
+            WindowType(name="WindowB", version="1.0.0", description=""),
+            "1.0.0",
+        )
         def test_algorithm(params: ExecutionParams) -> NoneResult:
+            _ = params
             return NoneResult()
 
 
@@ -40,7 +55,10 @@ def test_algo_arg_parsing_suceeds():
 
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm(params: ExecutionParams) -> NoneResult:
+        _ = params
         return NoneResult()
+
+    _ = test_algorithm
 
     assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
 
@@ -55,6 +73,7 @@ def test_valid_dependency():
 
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm(params: ExecutionParams) -> ValueResult:
+        _ = params
         return ValueResult(algo_1_result)
 
     _time_from = timestamp_pb2.Timestamp(seconds=0)
@@ -79,6 +98,7 @@ def test_valid_dependency():
 
     @proc.algorithm("TestAlgorithm", "1.2.0", WindowB)
     def test_algorithm_2(params: ExecutionParams) -> ValueResult:
+        _ = params
         return ValueResult(algo_2_result)
 
     @proc.algorithm(
@@ -88,7 +108,10 @@ def test_valid_dependency():
         depends_on=[test_algorithm, test_algorithm_2],
     )
     def test_algorithm_3(params: ExecutionParams) -> NoneResult:
+        _ = params
         return NoneResult()
+
+    _ = test_algorithm_3
 
     # confirm algorithm execution order.
     assert (
@@ -118,7 +141,10 @@ def test_bad_dependency():
 
         @proc.algorithm("NewAlgorithm", "1.0.0", WindowA, depends_on=[undecorated])
         def new_algorithm(params: ExecutionParams) -> NoneResult:
-            return None
+            _ = params
+            return NoneResult()
+
+        _ = new_algorithm
 
 
 @pytest.mark.live
@@ -133,16 +159,22 @@ def test_registration_works():
 
     @proc.algorithm("TestAlgorithm", "1.0.0", WindowA)
     def test_algorithm(params: ExecutionParams) -> ValueResult:
+        _ = params
         return ValueResult(algo_1_result)
 
+    stubWindow = Window(dt.datetime.now(), dt.datetime.now(), "", "", "")
+    stub_params = ExecutionParams(stubWindow)
     assert "TestAlgorithm_1.0.0" in proc._algorithmsSingleton._algorithms
     assert (
-        proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn()
+        proc._algorithmsSingleton._algorithms["TestAlgorithm_1.0.0"].exec_fn(
+            stub_params
+        )
         == algo_1_result
     )
 
     @proc.algorithm("TestAlgorithm", "1.2.0", WindowB)
     def test_algorithm_2(params: ExecutionParams) -> ValueResult:
+        _ = params
         return ValueResult(algo_2_result)
 
     @proc.algorithm(
@@ -152,6 +184,9 @@ def test_registration_works():
         depends_on=[test_algorithm, test_algorithm_2],
     )
     def test_algorithm_3(params: ExecutionParams) -> NoneResult:
+        _ = params
         return NoneResult()
+
+    _ = test_algorithm_3
 
     proc.Register()

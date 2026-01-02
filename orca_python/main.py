@@ -35,6 +35,7 @@ from typing import (
     Optional,
     Protocol,
     Generator,
+    TypedDict,
     AsyncGenerator,
 )
 from inspect import signature
@@ -54,6 +55,7 @@ from orca_python.exceptions import (
     InvalidDependency,
     InvalidWindowArgument,
     InvalidAlgorithmArgument,
+    BrokenRemoteAlgorithmStubs,
     InvalidAlgorithmReturnType,
     InvalidMetadataFieldArgument,
 )
@@ -65,6 +67,11 @@ WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class StubInfo(TypedDict):
+    annotations: Dict[str, Any]
+    metadata: Dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -195,8 +202,6 @@ class ExecutionParams:
                 origin=window.origin,
                 metadata=json_format.MessageToDict(window.metadata),
             )
-        else:
-            raise InvalidWindowArgument(f"window of type {type(window)} not handled")
         self.dependencies = dependencies
 
 
@@ -204,6 +209,14 @@ class AlgorithmFn(Protocol):
     def __call__(
         self, params: ExecutionParams, *args: Any, **kwargs: Any
     ) -> returnResult: ...
+
+
+@dataclass
+class RemoteAlgorithm:
+    ProcessorName: str
+    ProcessorRuntime: str
+    Name: str
+    Version: str
 
 
 T = TypeVar("T", bound=AlgorithmFn)
@@ -260,6 +273,7 @@ class Algorithm:
     Attributes:
         name (str): The name of the algorithm (PascalCase).
         version (str): Semantic version of the algorithm (e.g., "1.0.0").
+        description (str): A description of the algorithm.
         window_type (WindowType): The window type triggers the algorithm.
         exec_fn (AlgorithmFn): The execution function for the algorithm.
         processor (str): Name of the processor where it's registered.
@@ -268,6 +282,7 @@ class Algorithm:
 
     name: str
     version: str
+    description: str
     window_type: WindowType
     exec_fn: AlgorithmFn
     processor: str
@@ -299,6 +314,7 @@ class Algorithms:
         self._algorithms: Dict[str, Algorithm] = {}
         self._dependencies: Dict[str, List[Algorithm]] = {}
         self._dependencyFns: Dict[str, List[AlgorithmFn]] = {}
+        self._remoteDependencies: Dict[str, List[RemoteAlgorithm]] = {}
         self._window_triggers: Dict[str, List[Algorithm]] = {}
 
     def _add_algorithm(self, name: str, algorithm: Algorithm) -> None:
@@ -320,31 +336,52 @@ class Algorithms:
         )
         self._algorithms[name] = algorithm
 
-    def _add_dependency(self, algorithm: str, dependency: AlgorithmFn) -> None:
+    def _add_dependency(
+        self, algorithm: str, dependency: AlgorithmFn, remote: bool = False
+    ) -> None:
         """
         Adds a dependency to an algorithm.
 
         Args:
             algorithm (str): Target algorithm's full name.
             dependency (AlgorithmFn): Dependency function already registered.
+            remote: Whether the dependency is a remote algorithm.
 
         Raises:
             ValueError: If the dependency function is not registered.
         """
         LOGGER.debug(f"Adding dependency for algorithm: {algorithm}")
+        if remote:
+            remoteDepMetadata = getattr(dependency, "__orca_metadata__", None)
+            if remoteDepMetadata is None:
+                raise BrokenRemoteAlgorithmStubs(
+                    "Could not parse metadata from Orca stubs. Rerun stub generation: `orca sync`"
+                )
+            try:
+                remoteAlgo = RemoteAlgorithm(**remoteDepMetadata)
+            except Exception as e:
+                raise BrokenRemoteAlgorithmStubs(
+                    f"Could not parse metadata from Orca stubs: {e} Rerun stub generation: `orca sync`"
+                )
+
+            if algorithm not in self._remoteDependencies:
+                self._remoteDependencies[algorithm] = [remoteAlgo]
+            else:
+                self._remoteDependencies[algorithm].append(remoteAlgo)
+
+            return
+
         dependencyAlgo = None
         for algo in self._algorithms.values():
             if algo.exec_fn == dependency:
                 dependencyAlgo = algo
                 break
-
         if not dependencyAlgo:
             dep_name = getattr(dependency, "__name__", "<unknown>")
             LOGGER.error(
                 f"Failed to find registered algorithm for dependency: {dep_name}"
             )
-            raise ValueError(f"Dependency {dep_name} not found in reg=ms")
-
+            raise ValueError(f"Dependency {dep_name} not found")
         if algorithm not in self._dependencyFns:
             self._dependencyFns[algorithm] = [dependency]
             self._dependencies[algorithm] = [dependencyAlgo]
@@ -458,18 +495,29 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 )
 
             elif algo.result_type == ValueResult:  # type: ignore
-                # for single numeric values
-                resultPb = pb.Result(
-                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                    single_value=algoResult.value,
-                )
+                if isinstance(algoResult.value, (float, int)):
+                    # for single numeric values
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                        single_value=algoResult.value,
+                    )
+                else:
+                    LOGGER.error(
+                        f"Algorithm {algo.name} {algo.version} produced result that was neither a float or an int {algo.result_type}. Failing algorithm."
+                    )
+                    # create a handled failure result
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_HANDLED_FAILED,
+                    )
+
             elif algo.result_type == ArrayResult:  # type: ignore
-                # for lists of numeric values
-                float_array = pb.FloatArray(values=algoResult)
-                resultPb = pb.Result(
-                    status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
-                    float_values=float_array.values,
-                )
+                if isinstance(algoResult, List):
+                    # for lists of numeric values
+                    float_array = pb.FloatArray(values=algoResult)
+                    resultPb = pb.Result(
+                        status=pb.ResultStatus.RESULT_STATUS_SUCEEDED,
+                        float_values=float_array,
+                    )
             else:
                 LOGGER.error(
                     f"Algorithm {algo.name} {algo.version} has unhandled return type {algo.result_type}"
@@ -589,12 +637,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             context.set_details(f"DAG execution failed: {str(e)}")
             raise
 
-        except Exception as e:
-            LOGGER.error(f"DAG execution failed: {str(e)}", exc_info=True)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"DAG execution failed: {str(e)}")
-            raise
-
     def HealthCheck(
         self, HealthCheckRequest: pb.HealthCheckRequest, context: grpc.ServicerContext
     ) -> pb.HealthCheckResponse:
@@ -608,6 +650,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         Returns:
             pb.HealthCheckResponse: Health status and optional metrics.
         """
+        _ = HealthCheckRequest
+        _ = context
 
         LOGGER.debug("Received health check request")
         return pb.HealthCheckResponse(
@@ -634,6 +678,9 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         registration_request.runtime = self._runtime
         registration_request.connection_str = self._orcaProcessorConnStr
 
+        if envs.PROJECT_NAME != "":
+            registration_request.project_name = envs.PROJECT_NAME
+
         for _, algorithm in self._algorithmsSingleton._algorithms.items():
             LOGGER.debug(
                 f"Adding algorithm to registration: {algorithm.name}_{algorithm.version}"
@@ -641,6 +688,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algo_msg = registration_request.supported_algorithms.add()
             algo_msg.name = algorithm.name
             algo_msg.version = algorithm.version
+            algo_msg.description = algorithm.description
 
             # manage the return type of the algorithm
             if algorithm.result_type == ValueResult:  # type: ignore
@@ -664,7 +712,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             algo_msg.window_type.version = algorithm.window_type.version
             algo_msg.window_type.description = algorithm.window_type.description
 
-            # Fill in metadata fields if present
+            # fill in metadata fields if present
             if len(algorithm.window_type.metadataFields) > 0:
                 for metadataField in algorithm.window_type.metadataFields:
                     metadata_fields_msg = algo_msg.window_type.metadataFields.add()
@@ -679,6 +727,17 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     dep_msg.version = dep.version
                     dep_msg.processor_name = dep.processor
                     dep_msg.processor_runtime = dep.runtime
+
+            # Add remote dependencies if they exist
+            if algorithm.full_name in self._algorithmsSingleton._remoteDependencies:
+                for remote_dep in self._algorithmsSingleton._remoteDependencies[
+                    algorithm.full_name
+                ]:
+                    dep_msg = algo_msg.dependencies.add()
+                    dep_msg.name = remote_dep.Name
+                    dep_msg.version = remote_dep.Version
+                    dep_msg.processor_name = remote_dep.ProcessorName
+                    dep_msg.processor_runtime = remote_dep.ProcessorRuntime
         try:
             if envs.is_production:
                 # secure channel with TLS
@@ -694,10 +753,6 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     stub = service_pb2_grpc.OrcaCoreStub(channel)
                     response = stub.RegisterProcessor(registration_request)
                     LOGGER.info(f"Algorithm registration response received: {response}")
-        except grpc._channel._InactiveRpcError as e:
-            print()
-            print(e.details())
-            sys.exit(1)
         except Exception as e:
             print()
             print(e)
@@ -752,6 +807,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             import signal
 
             def handle_shutdown(signum: int, frame: Any) -> None:
+                _, _ = signum, frame
                 LOGGER.info("Received shutdown signal, stopping server...")
                 server.stop(grace=5)  # 5 seconds grace period
 
@@ -773,6 +829,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
         name: str,
         version: str,
         window_type: WindowType,
+        description: Optional[str] = None,
         depends_on: List[Callable[..., Any]] = [],
     ) -> Callable[[T], T]:
         """
@@ -783,6 +840,7 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             version (str): Semantic version (e.g., "1.0.0").
             window_type (WindowType): Triggering window type
             depends_on (List[Callable]): List of dependent algorithm functions.
+            dscription: The description of the algorithm
         Returns:
             Callable[[T], T]: The decorated function.
 
@@ -834,10 +892,15 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                 raise InvalidAlgorithmReturnType(
                     f"Algorithm has return type {sig.return_annotation}, but expected one of `StructResult`, `ValueResult`, `ArrayResult`, `NoneResult`"
                 )
+            if description is None:
+                _description = "" if algo.__doc__ is None else algo.__doc__
+            else:
+                _description = description
 
             algorithm = Algorithm(
                 name=name,
                 version=version,
+                description=_description,
                 window_type=window_type,
                 exec_fn=wrapper,
                 processor=self._name,
@@ -851,14 +914,18 @@ class Processor(OrcaProcessorServicer):  # type: ignore
             )
 
             for dependency in depends_on:
-                if not self._algorithmsSingleton._has_algorithm_fn(dependency):
+                if not getattr(
+                    dependency, "__orca_is_remote__", False
+                ) and not self._algorithmsSingleton._has_algorithm_fn(dependency):
                     message = (
                         f"Cannot add function `{dependency.__name__}` to dependency stack. All dependencies must "
                         "be decorated with `@algorithm` before they can be used as dependencies."
                     )
                     raise InvalidDependency(message)
                 self._algorithmsSingleton._add_dependency(
-                    algorithm.full_name, dependency
+                    algorithm.full_name,
+                    dependency,
+                    getattr(dependency, "__orca_is_remote__", False),
                 )
 
             # TODO: check for circular dependencies. It's not easy to create one in python as the function
@@ -881,9 +948,9 @@ def is_type_in_union(target_type, union_type):  # type: ignore
             return target_type in union_type.__args__
 
         # handle typing.Union syntax
-        origin = getattr(typing, "get_origin", lambda x: None)(union_type)
+        origin = getattr(typing, "get_origin", lambda _: None)(union_type)
         if origin is Union:
-            args = getattr(typing, "get_args", lambda x: ())(union_type)
+            args = getattr(typing, "get_args", lambda _: ())(union_type)
             return target_type in args
 
         # handle single type (not a union)
