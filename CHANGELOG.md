@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [unreleased]
+
+## [v0.12.0] - 03-01-2026
+
+### Removed
+
+- The `registry` stub. Not needed as the CLI will now create direct source code that lives in the local processors repository.
+
 ## [v0.11.0] - 02-01-2026
 
 ### Added
