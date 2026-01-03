@@ -35,7 +35,6 @@ from typing import (
     Optional,
     Protocol,
     Generator,
-    TypedDict,
     AsyncGenerator,
 )
 from inspect import signature
@@ -67,11 +66,6 @@ WINDOW_NAME = r"^[A-Z][a-zA-Z0-9]*$"
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-class StubInfo(TypedDict):
-    annotations: Dict[str, Any]
-    metadata: Dict[str, Any]
 
 
 @dataclass(frozen=True)
