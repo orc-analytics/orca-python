@@ -1,8 +1,11 @@
 import time
+import datetime as dt
 
 from orca_python import (
+    Lookback,
     Processor,
     WindowType,
+    ValueResult,
     StructResult,
     MetadataField,
     ExecutionParams,
@@ -32,6 +35,15 @@ def my_algorithm(params: ExecutionParams) -> StructResult:
 
     time.sleep(5)
     return StructResult({"result": 42})
+
+
+@proc.algorithm(
+    "SecondAlgo",
+    "2.0.0",
+    Every30Second,
+    depends_on=[Lookback(my_algorithm, td=dt.timedelta(days=10), n=10)],
+)
+def second_algorithm(params: ExecutionParams) -> ValueResult: ...
 
 
 if __name__ == "__main__":

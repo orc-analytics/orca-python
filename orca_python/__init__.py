@@ -1,5 +1,6 @@
 from orca_python.main import (
     Window,
+    Lookback,
     Processor,
     EmitWindow,
     NoneResult,
@@ -22,4 +23,5 @@ __all__ = [
     "ArrayResult",
     "NoneResult",
     "ExecutionParams",
+    "Lookback",
 ]

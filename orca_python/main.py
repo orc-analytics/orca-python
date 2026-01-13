@@ -213,6 +213,29 @@ class RemoteAlgorithm:
     Version: str
 
 
+@dataclass
+class Lookback(AlgorithmFn):
+    """Defines a lookback period in an algorithm dependency"""
+
+    _lookback_td: dt.timedelta
+    _lookback_n: int
+    _algorithm: AlgorithmFn = field(repr=False)
+
+    def __init__(self, algorithm: AlgorithmFn, td: dt.timedelta, n: int) -> None:
+        self.__dict__.update(algorithm.__dict__)
+
+        self._algorithm = algorithm
+
+        self._lookback_td = td
+        self._lookback_n = n
+
+    def __call__(
+        self, params: ExecutionParams, *args: Any, **kwargs: Any
+    ) -> returnResult:
+        """Delegate the call to the wrapped algorithm"""
+        return self._algorithm(params, *args, **kwargs)
+
+
 T = TypeVar("T", bound=AlgorithmFn)
 
 
