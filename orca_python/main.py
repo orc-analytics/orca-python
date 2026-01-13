@@ -217,8 +217,6 @@ class RemoteAlgorithm:
 class Lookback(AlgorithmFn):
     """Defines a lookback period in an algorithm dependency"""
 
-    _lookback_td: dt.timedelta
-    _lookback_n: int
     _algorithm: AlgorithmFn = field(repr=False)
 
     def __init__(self, algorithm: AlgorithmFn, td: dt.timedelta, n: int) -> None:
@@ -232,7 +230,6 @@ class Lookback(AlgorithmFn):
     def __call__(
         self, params: ExecutionParams, *args: Any, **kwargs: Any
     ) -> returnResult:
-        """Delegate the call to the wrapped algorithm"""
         return self._algorithm(params, *args, **kwargs)
 
 
@@ -744,6 +741,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     dep_msg.version = dep.version
                     dep_msg.processor_name = dep.processor
                     dep_msg.processor_runtime = dep.runtime
+                    dep_msg.lookback_num = getattr(dep, "_lookback_num", 0)
+                    dep_msg.lookback_num = getattr(dep, "_lookback_td", 0)
 
             # Add remote dependencies if they exist
             if algorithm.full_name in self._algorithmsSingleton._remoteDependencies:
@@ -755,6 +754,8 @@ class Processor(OrcaProcessorServicer):  # type: ignore
                     dep_msg.version = remote_dep.Version
                     dep_msg.processor_name = remote_dep.ProcessorName
                     dep_msg.processor_runtime = remote_dep.ProcessorRuntime
+                    dep_msg.lookback_num = getattr(dep, "_lookback_num", 0)
+                    dep_msg.lookback_num = getattr(dep, "_lookback_td", 0)
         try:
             if envs.is_production:
                 # secure channel with TLS
